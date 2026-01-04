@@ -20,7 +20,7 @@ main =
 tests : List (Effect.Test.EndToEndTest ToBackend FrontendMsg FrontendModel ToFrontend BackendMsg BackendModel)
 tests =
     [ Effect.Test.start
-        "Check basic render functionality"
+        "Dashboard title renders correctly"
         (Effect.Time.millisToPosix 0)
         config
         [ Effect.Test.connectFrontend
@@ -29,7 +29,7 @@ tests =
             "/"
             { width = 800, height = 600 }
             (\client1 ->
-                [ client1.checkView 100 (Test.Html.Query.has [ Test.Html.Selector.exactText "Hello world!" ])
+                [ client1.checkView 100 (Test.Html.Query.has [ Test.Html.Selector.text "Habit Dashboard" ])
                 ]
             )
         ]

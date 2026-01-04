@@ -49,7 +49,7 @@ config =
     , NoPrematureLetComputation.rule
     , NoUnused.Exports.rule
         |> Rule.ignoreErrorsForDirectories [ "tests/", "src/Evergreen/" ]
-        |> Rule.ignoreErrorsForFiles [ "src/Env.elm" ]
+        |> Rule.ignoreErrorsForFiles [ "src/Env.elm", "src/CalendarDict.elm", "src/HabitCalendar.elm" ]
     , NoUnused.Parameters.rule
     , NoUnused.Patterns.rule
     , NoUnused.Variables.rule

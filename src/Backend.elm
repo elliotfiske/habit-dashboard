@@ -1,10 +1,11 @@
 module Backend exposing (BackendApp, Model, UnwrappedBackendApp, app, app_)
 
+import CalendarDict
 import Effect.Command as Command exposing (BackendOnly, Command)
 import Effect.Lamdera exposing (ClientId, SessionId)
 import Effect.Subscription as Subscription exposing (Subscription)
 import Lamdera as L
-import Types exposing (BackendModel, BackendMsg(..), ToBackend(..), ToFrontend)
+import Types exposing (BackendModel, BackendMsg(..), ToBackend(..), ToFrontend(..))
 
 
 type alias Model =
@@ -56,28 +57,35 @@ subscriptions _ =
         ]
 
 
-init : ( Model, Command restriction toMsg BackendMsg )
+init : ( Model, Command BackendOnly ToFrontend BackendMsg )
 init =
-    ( { message = "Hello!" }
+    ( { calendars = CalendarDict.empty }
     , Command.none
     )
 
 
-update : BackendMsg -> Model -> ( Model, Command restriction toMsg BackendMsg )
+update : BackendMsg -> Model -> ( Model, Command BackendOnly ToFrontend BackendMsg )
 update msg model =
     case msg of
         NoOpBackendMsg ->
             ( model, Command.none )
 
-        ClientConnected _ _ ->
-            ( model, Command.none )
+        ClientConnected _ clientId ->
+            ( model
+            , Effect.Lamdera.sendToFrontend clientId (CalendarsUpdated model.calendars)
+            )
 
         ClientDisconnected _ _ ->
             ( model, Command.none )
 
 
-updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Command restriction toMsg BackendMsg )
-updateFromFrontend _ _ msg model =
+updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Command BackendOnly ToFrontend BackendMsg )
+updateFromFrontend _ clientId msg model =
     case msg of
         NoOpToBackend ->
             ( model, Command.none )
+
+        RequestCalendars ->
+            ( model
+            , Effect.Lamdera.sendToFrontend clientId (CalendarsUpdated model.calendars)
+            )
