@@ -63,15 +63,26 @@ updateFromBackend msg model =
 
 view : Model -> Effect.Browser.Document FrontendMsg
 view model =
-    { title = ""
+    { title = "Habit Dashboard"
     , body =
-        [ Html.div [ Attr.style "text-align" "center", Attr.style "padding-top" "40px" ]
-            [ Html.img [ Attr.src "https://lamdera.app/lamdera-logo-black.png", Attr.width 150 ] []
-            , Html.div
-                [ Attr.style "font-family" "sans-serif"
-                , Attr.style "padding-top" "40px"
+        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css" ] []
+        , Html.div [ Attr.class "min-h-screen bg-base-200 flex flex-col items-center justify-center p-8" ]
+            [ Html.div [ Attr.class "card bg-base-100 shadow-xl p-8" ]
+                [ Html.img
+                    [ Attr.src "https://lamdera.app/lamdera-logo-black.png"
+                    , Attr.width 150
+                    , Attr.class "mx-auto"
+                    ]
+                    []
+                , Html.h1 [ Attr.class "text-3xl font-bold text-center mt-6" ]
+                    [ Html.text "Habit Dashboard" ]
+                , Html.p [ Attr.class "text-center text-base-content/70 mt-2" ]
+                    [ Html.text model.message ]
+                , Html.div [ Attr.class "flex gap-2 justify-center mt-6" ]
+                    [ Html.button [ Attr.class "btn btn-primary" ] [ Html.text "Get Started" ]
+                    , Html.button [ Attr.class "btn btn-ghost" ] [ Html.text "Learn More" ]
+                    ]
                 ]
-                [ Html.text model.message ]
             ]
         ]
     }

@@ -18,6 +18,23 @@ npm install -g elm-test
 
 # elm-format (code formatter)
 npm install -g elm-format
+
+# Node.js (for TailwindCSS)
+# See https://nodejs.org/
+```
+
+## Setup
+
+Install npm dependencies (for TailwindCSS):
+
+```bash
+npm install
+```
+
+Build the CSS:
+
+```bash
+npm run build:css
 ```
 
 ## Development
@@ -29,6 +46,20 @@ lamdera live
 ```
 
 This starts the development server at `http://localhost:8000`.
+
+### TailwindCSS
+
+To rebuild CSS after changing Tailwind classes in Elm files:
+
+```bash
+npm run build:css
+```
+
+For automatic rebuilds during development:
+
+```bash
+npm run watch:css
+```
 
 ### Linting
 
