@@ -1,12 +1,13 @@
 module Types exposing (..)
 
-import Browser exposing (UrlRequest)
-import Browser.Navigation exposing (Key)
+import Effect.Browser exposing (UrlRequest)
+import Effect.Browser.Navigation exposing (Key)
+import Effect.Lamdera
 import Url exposing (Url)
 
 
 type alias FrontendModel =
-    { key : Key
+    { key : Effect.Browser.Navigation.Key
     , message : String
     }
 
@@ -17,7 +18,7 @@ type alias BackendModel =
 
 
 type FrontendMsg
-    = UrlClicked UrlRequest
+    = UrlClicked Effect.Browser.UrlRequest
     | UrlChanged Url
     | NoOpFrontendMsg
 
@@ -28,6 +29,8 @@ type ToBackend
 
 type BackendMsg
     = NoOpBackendMsg
+    | ClientConnected Effect.Lamdera.SessionId Effect.Lamdera.ClientId
+    | ClientDisconnected Effect.Lamdera.SessionId Effect.Lamdera.ClientId
 
 
 type ToFrontend
