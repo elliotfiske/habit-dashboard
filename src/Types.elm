@@ -1,7 +1,7 @@
 module Types exposing (..)
 
-import Effect.Browser exposing (UrlRequest)
-import Effect.Browser.Navigation exposing (Key)
+import Effect.Browser
+import Effect.Browser.Navigation
 import Effect.Lamdera
 import Url exposing (Url)
 

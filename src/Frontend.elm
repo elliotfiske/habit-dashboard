@@ -22,6 +22,7 @@ app =
         app_
 
 
+app_ : { init : Url.Url -> Effect.Browser.Navigation.Key -> ( Model, Command restriction toMsg FrontendMsg ), onUrlRequest : UrlRequest -> FrontendMsg, onUrlChange : Url.Url -> FrontendMsg, update : FrontendMsg -> Model -> ( Model, Command a b FrontendMsg ), updateFromBackend : ToFrontend -> Model -> ( Model, Command c d FrontendMsg ), subscriptions : e -> Subscription f msg, view : Model -> Effect.Browser.Document FrontendMsg }
 app_ =
     { init = init
     , onUrlRequest = UrlClicked
@@ -34,9 +35,9 @@ app_ =
 
 
 init : Url.Url -> Effect.Browser.Navigation.Key -> ( Model, Command restriction toMsg FrontendMsg )
-init url key =
+init _ key =
     ( { key = key
-      , message = "Welcome to Lamdera! You're looking at the auto-generated base implementation. Check out src/Frontend.elm to start coding!"
+      , message = "Hello world!"
       }
     , Command.none
     )

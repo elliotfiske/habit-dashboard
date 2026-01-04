@@ -47,15 +47,15 @@ update msg model =
         NoOpBackendMsg ->
             ( model, Command.none )
 
-        ClientConnected sessionId clientId ->
+        ClientConnected _ _ ->
             ( model, Command.none )
 
-        ClientDisconnected sessionId clientId ->
+        ClientDisconnected _ _ ->
             ( model, Command.none )
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Command restriction toMsg BackendMsg )
-updateFromFrontend sessionId clientId msg model =
+updateFromFrontend _ _ msg model =
     case msg of
         NoOpToBackend ->
             ( model, Command.none )
