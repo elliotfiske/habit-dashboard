@@ -30,7 +30,6 @@ import NoUnused.Parameters
 import NoUnused.Patterns
 import NoUnused.Variables
 import Review.Rule as Rule exposing (Rule)
-import Simplify
 
 
 config : List Rule
@@ -47,13 +46,10 @@ config =
     , NoMissingTypeExpose.rule
     , NoSimpleLetBody.rule
     , NoPrematureLetComputation.rule
-
-    -- , NoUnused.CustomTypeConstructors.rule []
-    -- , NoUnused.CustomTypeConstructorArgs.rule
-    , NoUnused.Dependencies.rule
     , NoUnused.Exports.rule
+        |> Rule.ignoreErrorsForDirectories [ "tests/" ]
+        |> Rule.ignoreErrorsForFiles [ "src/Env.elm" ]
     , NoUnused.Parameters.rule
     , NoUnused.Patterns.rule
     , NoUnused.Variables.rule
-    , Simplify.rule Simplify.defaults
     ]

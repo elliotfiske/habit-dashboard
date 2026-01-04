@@ -1,8 +1,10 @@
 module Frontend exposing (..)
 
+import Browser
+import Browser.Navigation
 import Effect.Browser exposing (UrlRequest)
 import Effect.Browser.Navigation
-import Effect.Command as Command exposing (Command)
+import Effect.Command as Command exposing (Command, FrontendOnly)
 import Effect.Lamdera
 import Effect.Subscription as Subscription exposing (Subscription)
 import Html
@@ -16,25 +18,19 @@ type alias Model =
     FrontendModel
 
 
-app =
-    Effect.Lamdera.frontend
-        L.sendToBackend
-        app_
-
-
-app_ : { init : Url.Url -> Effect.Browser.Navigation.Key -> ( Model, Command restriction toMsg FrontendMsg ), onUrlRequest : UrlRequest -> FrontendMsg, onUrlChange : Url.Url -> FrontendMsg, update : FrontendMsg -> Model -> ( Model, Command a b FrontendMsg ), updateFromBackend : ToFrontend -> Model -> ( Model, Command c d FrontendMsg ), subscriptions : e -> Subscription f msg, view : Model -> Effect.Browser.Document FrontendMsg }
+app_ : FrontendApp
 app_ =
     { init = init
     , onUrlRequest = UrlClicked
     , onUrlChange = UrlChanged
     , update = update
     , updateFromBackend = updateFromBackend
-    , subscriptions = \m -> Subscription.none
+    , subscriptions = \_ -> Subscription.none
     , view = view
     }
 
 
-init : Url.Url -> Effect.Browser.Navigation.Key -> ( Model, Command restriction toMsg FrontendMsg )
+init : Url.Url -> Effect.Browser.Navigation.Key -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
 init _ key =
     ( { key = key
       , message = "Hello world!"
@@ -43,7 +39,7 @@ init _ key =
     )
 
 
-update : FrontendMsg -> Model -> ( Model, Command restriction toMsg FrontendMsg )
+update : FrontendMsg -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
 update msg model =
     case msg of
         UrlClicked _ ->
@@ -58,7 +54,7 @@ update msg model =
             ( model, Command.none )
 
 
-updateFromBackend : ToFrontend -> Model -> ( Model, Command restriction toMsg FrontendMsg )
+updateFromBackend : ToFrontend -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
 updateFromBackend msg model =
     case msg of
         NoOpToFrontend ->
@@ -79,3 +75,36 @@ view model =
             ]
         ]
     }
+
+
+{-| Type alias for the frontend application configuration record (Effect-wrapped version).
+-}
+type alias FrontendApp =
+    { init : Url.Url -> Effect.Browser.Navigation.Key -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
+    , onUrlRequest : UrlRequest -> FrontendMsg
+    , onUrlChange : Url.Url -> FrontendMsg
+    , update : FrontendMsg -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
+    , updateFromBackend : ToFrontend -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
+    , subscriptions : Model -> Subscription FrontendOnly FrontendMsg
+    , view : Model -> Effect.Browser.Document FrontendMsg
+    }
+
+
+{-| Type alias for the unwrapped frontend application (uses standard Cmd/Sub).
+-}
+type alias UnwrappedFrontendApp =
+    { init : Url.Url -> Browser.Navigation.Key -> ( Model, Cmd FrontendMsg )
+    , view : Model -> Browser.Document FrontendMsg
+    , update : FrontendMsg -> Model -> ( Model, Cmd FrontendMsg )
+    , updateFromBackend : ToFrontend -> Model -> ( Model, Cmd FrontendMsg )
+    , subscriptions : Model -> Sub FrontendMsg
+    , onUrlRequest : Browser.UrlRequest -> FrontendMsg
+    , onUrlChange : Url.Url -> FrontendMsg
+    }
+
+
+app : UnwrappedFrontendApp
+app =
+    Effect.Lamdera.frontend
+        L.sendToBackend
+        app_
