@@ -1,4 +1,4 @@
-module Frontend exposing (..)
+module Frontend exposing (FrontendApp, Model, UnwrappedFrontendApp, app, app_)
 
 import Browser
 import Browser.Navigation
@@ -10,7 +10,7 @@ import Effect.Subscription as Subscription exposing (Subscription)
 import Html
 import Html.Attributes as Attr
 import Lamdera as L
-import Types exposing (..)
+import Types exposing (FrontendModel, FrontendMsg(..), ToBackend, ToFrontend(..))
 import Url
 
 

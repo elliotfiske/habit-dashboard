@@ -47,7 +47,7 @@ Access Lamdera-specific commands by typing `:lamdera` in the REPL.
 - Lamdera general docs: https://dashboard.lamdera.app/docs
 
 ## Linting
-- After making code changes to `.elm` files, run `elm-review` to check for linting errors
+- After making code changes to `*.elm` files, run `elm-review` to check for linting errors
 - Fix any elm-review errors before considering the task complete
 - Common elm-review rules in this project:
   - `NoExposingEverything` - Use explicit exports instead of `exposing (..)`

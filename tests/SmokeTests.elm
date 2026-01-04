@@ -59,5 +59,6 @@ config =
     }
 
 
+appTests : Test.Test
 appTests =
     describe "App tests" (List.map Effect.Test.toTest tests)

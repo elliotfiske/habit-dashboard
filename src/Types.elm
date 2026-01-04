@@ -1,4 +1,11 @@
-module Types exposing (..)
+module Types exposing
+    ( BackendModel
+    , BackendMsg(..)
+    , FrontendModel
+    , FrontendMsg(..)
+    , ToBackend(..)
+    , ToFrontend(..)
+    )
 
 import Effect.Browser
 import Effect.Browser.Navigation
