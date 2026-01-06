@@ -2,6 +2,7 @@ module Toggl exposing
     ( ApiKey
     , TimeEntry
     , TimeEntryId(..)
+    , TogglApiError(..)
     , TogglProject
     , TogglProjectId(..)
     , TogglWorkspace
@@ -13,7 +14,9 @@ module Toggl exposing
     , projectDecoder
     , timeEntriesSearchDecoder
     , timeEntryIdToInt
+    , togglApiErrorToString
     , togglProjectIdToInt
+    , togglProjectIdToString
     , togglWorkspaceIdToInt
     , workspaceDecoder
     )
@@ -33,6 +36,13 @@ import Json.Decode as D exposing (Decoder)
 import Json.Decode.Pipeline as DP
 import Json.Encode as E
 import Time exposing (Posix)
+
+
+{-| Custom error type for Toggl API errors that includes rate limit details.
+-}
+type TogglApiError
+    = HttpError Effect.Http.Error
+    | RateLimited { secondsUntilReset : Int, message : String }
 
 
 
@@ -59,6 +69,11 @@ type TogglProjectId
 togglProjectIdToInt : TogglProjectId -> Int
 togglProjectIdToInt (TogglProjectId id) =
     id
+
+
+togglProjectIdToString : TogglProjectId -> String
+togglProjectIdToString =
+    togglProjectIdToInt >> String.fromInt
 
 
 {-| Tagged ID for Toggl time entries.
@@ -210,17 +225,135 @@ timeEntriesSearchDecoder =
 -- API REQUESTS
 
 
+{-| Convert a TogglApiError to a user-friendly string.
+-}
+togglApiErrorToString : TogglApiError -> String
+togglApiErrorToString error =
+    case error of
+        RateLimited { secondsUntilReset, message } ->
+            let
+                minutes : Int
+                minutes =
+                    secondsUntilReset // 60
+
+                seconds : Int
+                seconds =
+                    modBy 60 secondsUntilReset
+
+                timeStr : String
+                timeStr =
+                    if minutes > 0 then
+                        String.fromInt minutes ++ "m " ++ String.fromInt seconds ++ "s"
+
+                    else
+                        String.fromInt seconds ++ "s"
+            in
+            "RATE_LIMIT:" ++ timeStr ++ "|" ++ message
+
+        HttpError httpError ->
+            case httpError of
+                Effect.Http.BadUrl url ->
+                    "Bad URL: " ++ url
+
+                Effect.Http.Timeout ->
+                    "Request timed out"
+
+                Effect.Http.NetworkError ->
+                    "Network error - check your connection"
+
+                Effect.Http.BadStatus status ->
+                    case status of
+                        401 ->
+                            "Invalid API key (401 Unauthorized)"
+
+                        403 ->
+                            "Access forbidden (403)"
+
+                        _ ->
+                            "HTTP error: " ++ String.fromInt status
+
+                Effect.Http.BadBody body ->
+                    "Invalid response: " ++ body
+
+
+{-| Parse the rate limit error body to extract seconds until reset.
+Example body: "Your hourly limit of API requests was reached. Please try again in 2174 seconds."
+-}
+parseRateLimitBody : String -> { secondsUntilReset : Int, message : String }
+parseRateLimitBody body =
+    let
+        -- Try to extract the number of seconds from the message
+        -- Look for "in X seconds" pattern
+        maybeSeconds : Maybe Int
+        maybeSeconds =
+            body
+                |> String.words
+                |> findSecondsInWords
+    in
+    { secondsUntilReset = Maybe.withDefault 3600 maybeSeconds
+    , message = body
+    }
+
+
+{-| Find the number before "seconds" in a list of words.
+-}
+findSecondsInWords : List String -> Maybe Int
+findSecondsInWords words =
+    case words of
+        [] ->
+            Nothing
+
+        num :: "seconds" :: _ ->
+            String.toInt num
+
+        num :: "seconds." :: _ ->
+            String.toInt num
+
+        _ :: rest ->
+            findSecondsInWords rest
+
+
+{-| Handle HTTP response, checking for rate limit errors.
+-}
+handleResponse : Decoder a -> Effect.Http.Response String -> Result TogglApiError a
+handleResponse decoder response =
+    case response of
+        Effect.Http.BadUrl_ url ->
+            Err (HttpError (Effect.Http.BadUrl url))
+
+        Effect.Http.Timeout_ ->
+            Err (HttpError Effect.Http.Timeout)
+
+        Effect.Http.NetworkError_ ->
+            Err (HttpError Effect.Http.NetworkError)
+
+        Effect.Http.BadStatus_ metadata body ->
+            if metadata.statusCode == 402 then
+                Err (RateLimited (parseRateLimitBody body))
+
+            else
+                Err (HttpError (Effect.Http.BadStatus metadata.statusCode))
+
+        Effect.Http.GoodStatus_ _ body ->
+            case D.decodeString decoder body of
+                Ok value ->
+                    Ok value
+
+                Err decodeError ->
+                    Err (HttpError (Effect.Http.BadBody (D.errorToString decodeError)))
+
+
 {-| Fetch all workspaces for the authenticated user.
 GET <https://api.track.toggl.com/api/v9/workspaces>
 -}
-fetchWorkspaces : ApiKey -> (Result Effect.Http.Error (List TogglWorkspace) -> msg) -> Effect.Command.Command restriction toMsg msg
+fetchWorkspaces : ApiKey -> (Result TogglApiError (List TogglWorkspace) -> msg) -> Effect.Command.Command restriction toMsg msg
 fetchWorkspaces apiKey toMsg =
     Effect.Http.request
         { method = "GET"
         , headers = [ authHeader apiKey ]
         , url = "https://api.track.toggl.com/api/v9/workspaces"
         , body = Effect.Http.emptyBody
-        , expect = Effect.Http.expectJson toMsg (D.list workspaceDecoder)
+        , expect = Effect.Http.expectStringResponse toMsg (handleResponse (D.list workspaceDecoder))
         , timeout = Just (Duration.seconds 10)
         , tracker = Nothing
         }
@@ -229,7 +362,7 @@ fetchWorkspaces apiKey toMsg =
 {-| Fetch all projects in a workspace.
 GET <https://api.track.toggl.com/api/v9/workspaces/{workspace_id}/projects>
 -}
-fetchProjects : ApiKey -> TogglWorkspaceId -> (Result Effect.Http.Error (List TogglProject) -> msg) -> Effect.Command.Command restriction toMsg msg
+fetchProjects : ApiKey -> TogglWorkspaceId -> (Result TogglApiError (List TogglProject) -> msg) -> Effect.Command.Command restriction toMsg msg
 fetchProjects apiKey workspaceId toMsg =
     let
         url : String
@@ -243,7 +376,7 @@ fetchProjects apiKey workspaceId toMsg =
         , headers = [ authHeader apiKey ]
         , url = url
         , body = Effect.Http.emptyBody
-        , expect = Effect.Http.expectJson toMsg (D.list projectDecoder)
+        , expect = Effect.Http.expectStringResponse toMsg (handleResponse (D.list projectDecoder))
         , timeout = Just (Duration.seconds 10)
         , tracker = Nothing
         }
@@ -256,7 +389,7 @@ fetchTimeEntries :
     ApiKey
     -> TogglWorkspaceId
     -> { startDate : String, endDate : String, description : Maybe String, projectId : Maybe TogglProjectId }
-    -> (Result Effect.Http.Error (List TimeEntry) -> msg)
+    -> (Result TogglApiError (List TimeEntry) -> msg)
     -> Effect.Command.Command restriction toMsg msg
 fetchTimeEntries apiKey workspaceId options toMsg =
     let
@@ -300,7 +433,7 @@ fetchTimeEntries apiKey workspaceId options toMsg =
         , headers = [ authHeader apiKey ]
         , url = url
         , body = Effect.Http.jsonBody body
-        , expect = Effect.Http.expectJson toMsg timeEntriesSearchDecoder
+        , expect = Effect.Http.expectStringResponse toMsg (handleResponse timeEntriesSearchDecoder)
         , timeout = Just (Duration.seconds 10)
         , tracker = Nothing
         }

@@ -2,6 +2,7 @@ module DateUtils exposing
     ( DayComparison(..)
     , PointInTime
     , compareDays
+    , formatDateForApi
     , formatMonthDay
     , mondaysAgo
     , startOfDay
@@ -10,6 +11,7 @@ module DateUtils exposing
 {-| Utilities for working with dates and times in the calendar.
 -}
 
+import DateFormat
 import Time exposing (Posix, Weekday(..), Zone)
 import Time.Extra
 
@@ -125,55 +127,25 @@ startOfDay time =
 -}
 formatMonthDay : PointInTime -> String
 formatMonthDay time =
-    let
-        month : String
-        month =
-            Time.toMonth time.zone time.posix |> monthToNumber |> String.fromInt
-
-        day : String
-        day =
-            Time.toDay time.zone time.posix |> String.fromInt
-    in
-    month ++ "/" ++ day
+    DateFormat.format
+        [ DateFormat.monthNumber
+        , DateFormat.text "/"
+        , DateFormat.dayOfMonthNumber
+        ]
+        time.zone
+        time.posix
 
 
-{-| Convert a Month to its number (1-12).
+{-| Format a Posix time as YYYY-MM-DD for APIs.
 -}
-monthToNumber : Time.Month -> Int
-monthToNumber month =
-    case month of
-        Time.Jan ->
-            1
-
-        Time.Feb ->
-            2
-
-        Time.Mar ->
-            3
-
-        Time.Apr ->
-            4
-
-        Time.May ->
-            5
-
-        Time.Jun ->
-            6
-
-        Time.Jul ->
-            7
-
-        Time.Aug ->
-            8
-
-        Time.Sep ->
-            9
-
-        Time.Oct ->
-            10
-
-        Time.Nov ->
-            11
-
-        Time.Dec ->
-            12
+formatDateForApi : Posix -> String
+formatDateForApi posix =
+    DateFormat.format
+        [ DateFormat.yearNumber
+        , DateFormat.text "-"
+        , DateFormat.monthFixed
+        , DateFormat.text "-"
+        , DateFormat.dayOfMonthFixed
+        ]
+        Time.utc
+        posix

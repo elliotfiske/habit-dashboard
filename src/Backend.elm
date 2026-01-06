@@ -2,9 +2,9 @@ module Backend exposing (BackendApp, Model, UnwrappedBackendApp, app, app_)
 
 import CalendarDict
 import Effect.Command as Command exposing (BackendOnly, Command)
-import Effect.Http
 import Effect.Lamdera exposing (ClientId, SessionId)
 import Effect.Subscription as Subscription exposing (Subscription)
+import Env
 import HabitCalendar exposing (HabitCalendarId)
 import Lamdera as L
 import Time
@@ -64,7 +64,6 @@ subscriptions _ =
 init : ( Model, Command BackendOnly ToFrontend BackendMsg )
 init =
     ( { calendars = CalendarDict.empty
-      , togglApiKey = Nothing
       , togglWorkspaces = []
       , togglProjects = []
       }
@@ -79,8 +78,23 @@ update msg model =
             ( model, Command.none )
 
         ClientConnected _ clientId ->
+            let
+                -- Send calendars to the new client
+                calendarsCmd : Command BackendOnly ToFrontend BackendMsg
+                calendarsCmd =
+                    Effect.Lamdera.sendToFrontend clientId (CalendarsUpdated model.calendars)
+
+                -- If we have workspaces, send them too so the frontend knows we're connected
+                workspacesCmd : Command BackendOnly ToFrontend BackendMsg
+                workspacesCmd =
+                    if List.isEmpty model.togglWorkspaces then
+                        Command.none
+
+                    else
+                        Effect.Lamdera.sendToFrontend clientId (TogglWorkspacesReceived (Ok model.togglWorkspaces))
+            in
             ( model
-            , Effect.Lamdera.sendToFrontend clientId (CalendarsUpdated model.calendars)
+            , Command.batch [ calendarsCmd, workspacesCmd ]
             )
 
         ClientDisconnected _ _ ->
@@ -94,10 +108,10 @@ update msg model =
                         (TogglWorkspacesReceived (Ok workspaces))
                     )
 
-                Err httpError ->
+                Err apiError ->
                     ( model
                     , Effect.Lamdera.sendToFrontend clientId
-                        (TogglWorkspacesReceived (Err (httpErrorToString httpError)))
+                        (TogglWorkspacesReceived (Err (Toggl.togglApiErrorToString apiError)))
                     )
 
         GotTogglProjects clientId result ->
@@ -108,10 +122,10 @@ update msg model =
                         (TogglProjectsReceived (Ok projects))
                     )
 
-                Err httpError ->
+                Err apiError ->
                     ( model
                     , Effect.Lamdera.sendToFrontend clientId
-                        (TogglProjectsReceived (Err (httpErrorToString httpError)))
+                        (TogglProjectsReceived (Err (Toggl.togglApiErrorToString apiError)))
                     )
 
         GotTogglTimeEntries clientId calendarInfo result ->
@@ -148,10 +162,10 @@ update msg model =
                         ]
                     )
 
-                Err httpError ->
+                Err apiError ->
                     ( model
                     , Effect.Lamdera.sendToFrontend clientId
-                        (TogglTimeEntriesReceived (Err (httpErrorToString httpError)))
+                        (TogglTimeEntriesReceived (Err (Toggl.togglApiErrorToString apiError)))
                     )
 
 
@@ -166,85 +180,24 @@ updateFromFrontend _ clientId msg model =
             , Effect.Lamdera.sendToFrontend clientId (CalendarsUpdated model.calendars)
             )
 
-        SetTogglApiKey apiKey ->
-            ( { model | togglApiKey = Just apiKey }
-            , Toggl.fetchWorkspaces apiKey (GotTogglWorkspaces clientId)
+        FetchTogglWorkspaces ->
+            ( model
+            , Toggl.fetchWorkspaces Env.togglApiKey (GotTogglWorkspaces clientId)
             )
 
-        FetchTogglWorkspaces ->
-            case model.togglApiKey of
-                Just apiKey ->
-                    ( model
-                    , Toggl.fetchWorkspaces apiKey (GotTogglWorkspaces clientId)
-                    )
-
-                Nothing ->
-                    ( model
-                    , Effect.Lamdera.sendToFrontend clientId
-                        (TogglWorkspacesReceived (Err "No API key configured"))
-                    )
-
         FetchTogglProjects workspaceId ->
-            case model.togglApiKey of
-                Just apiKey ->
-                    ( model
-                    , Toggl.fetchProjects apiKey workspaceId (GotTogglProjects clientId)
-                    )
+            ( model
+            , Toggl.fetchProjects Env.togglApiKey workspaceId (GotTogglProjects clientId)
+            )
 
-                Nothing ->
-                    ( model
-                    , Effect.Lamdera.sendToFrontend clientId
-                        (TogglProjectsReceived (Err "No API key configured"))
-                    )
-
-        FetchTogglTimeEntries calendarInfo workspaceId startDate endDate ->
-            case model.togglApiKey of
-                Just apiKey ->
-                    ( model
-                    , Toggl.fetchTimeEntries apiKey
-                        workspaceId
-                        { startDate = startDate
-                        , endDate = endDate
-                        , description = Nothing
-                        , projectId = Nothing
-                        }
-                        (GotTogglTimeEntries clientId calendarInfo)
-                    )
-
-                Nothing ->
-                    ( model
-                    , Effect.Lamdera.sendToFrontend clientId
-                        (TogglTimeEntriesReceived (Err "No API key configured"))
-                    )
-
-
-{-| Convert an HTTP error to a human-readable string.
--}
-httpErrorToString : Effect.Http.Error -> String
-httpErrorToString error =
-    case error of
-        Effect.Http.BadUrl url ->
-            "Bad URL: " ++ url
-
-        Effect.Http.Timeout ->
-            "Request timed out"
-
-        Effect.Http.NetworkError ->
-            "Network error - check your connection"
-
-        Effect.Http.BadStatus status ->
-            case status of
-                401 ->
-                    "Invalid API key (401 Unauthorized)"
-
-                403 ->
-                    "Access forbidden (403)"
-
-                429 ->
-                    "Rate limited - try again later"
-
-                _ ->
-                    "HTTP error: " ++ String.fromInt status
-
-        Effect.Http.BadBody body ->
-            "Invalid response: " ++ body
+        FetchTogglTimeEntries calendarInfo workspaceId projectId startDate endDate ->
+            ( model
+            , Toggl.fetchTimeEntries Env.togglApiKey
+                workspaceId
+                { startDate = startDate
+                , endDate = endDate
+                , description = Nothing
+                , projectId = Just projectId
+                }
+                (GotTogglTimeEntries clientId calendarInfo)
+            )

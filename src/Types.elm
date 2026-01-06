@@ -2,8 +2,10 @@ module Types exposing
     ( BackendModel
     , BackendMsg(..)
     , CalendarInfo
+    , CreateCalendarModal
     , FrontendModel
     , FrontendMsg(..)
+    , ModalState(..)
     , ToBackend(..)
     , ToFrontend(..)
     , TogglConnectionStatus(..)
@@ -12,11 +14,10 @@ module Types exposing
 import CalendarDict exposing (CalendarDict)
 import Effect.Browser
 import Effect.Browser.Navigation
-import Effect.Http
 import Effect.Lamdera
 import HabitCalendar exposing (HabitCalendarId)
 import Time exposing (Posix, Zone)
-import Toggl exposing (ApiKey, TimeEntry, TogglProject, TogglWorkspace, TogglWorkspaceId)
+import Toggl exposing (TimeEntry, TogglProject, TogglWorkspace, TogglWorkspaceId)
 import Url exposing (Url)
 
 
@@ -25,8 +26,26 @@ type alias FrontendModel =
     , currentTime : Maybe Posix
     , currentZone : Maybe Zone
     , calendars : CalendarDict
-    , togglApiKey : String -- Input field for API key
     , togglStatus : TogglConnectionStatus
+    , modalState : ModalState
+    , availableProjects : List TogglProject -- Projects for the selected workspace
+    , projectsLoading : Bool
+    }
+
+
+{-| Modal state for the frontend.
+-}
+type ModalState
+    = ModalClosed
+    | ModalCreateCalendar CreateCalendarModal
+
+
+{-| State for the "Create Calendar" modal.
+-}
+type alias CreateCalendarModal =
+    { selectedWorkspace : Maybe TogglWorkspace
+    , selectedProject : Maybe TogglProject
+    , calendarName : String
     }
 
 
@@ -41,7 +60,6 @@ type TogglConnectionStatus
 
 type alias BackendModel =
     { calendars : CalendarDict
-    , togglApiKey : Maybe ApiKey
     , togglWorkspaces : List TogglWorkspace
     , togglProjects : List TogglProject
     }
@@ -53,17 +71,21 @@ type FrontendMsg
     | NoOpFrontendMsg
     | GotTime Posix
     | GotZone Zone
-    | TogglApiKeyChanged String
-    | SubmitTogglApiKey
+      -- Modal actions
+    | OpenCreateCalendarModal
+    | CloseModal
+    | SelectWorkspace TogglWorkspace
+    | SelectProject TogglProject
+    | CalendarNameChanged String
+    | SubmitCreateCalendar
 
 
 type ToBackend
     = NoOpToBackend
     | RequestCalendars
-    | SetTogglApiKey ApiKey
     | FetchTogglWorkspaces
     | FetchTogglProjects TogglWorkspaceId
-    | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId String String -- calendarInfo, workspaceId, startDate, endDate
+    | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId Toggl.TogglProjectId String String -- calendarInfo, workspaceId, projectId, startDate, endDate
 
 
 {-| Info needed to create a calendar from fetched time entries.
@@ -78,9 +100,9 @@ type BackendMsg
     = NoOpBackendMsg
     | ClientConnected Effect.Lamdera.SessionId Effect.Lamdera.ClientId
     | ClientDisconnected Effect.Lamdera.SessionId Effect.Lamdera.ClientId
-    | GotTogglWorkspaces Effect.Lamdera.ClientId (Result Effect.Http.Error (List TogglWorkspace))
-    | GotTogglProjects Effect.Lamdera.ClientId (Result Effect.Http.Error (List TogglProject))
-    | GotTogglTimeEntries Effect.Lamdera.ClientId CalendarInfo (Result Effect.Http.Error (List TimeEntry))
+    | GotTogglWorkspaces Effect.Lamdera.ClientId (Result Toggl.TogglApiError (List TogglWorkspace))
+    | GotTogglProjects Effect.Lamdera.ClientId (Result Toggl.TogglApiError (List TogglProject))
+    | GotTogglTimeEntries Effect.Lamdera.ClientId CalendarInfo (Result Toggl.TogglApiError (List TimeEntry))
 
 
 type ToFrontend
