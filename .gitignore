@@ -7,6 +7,3 @@ package-lock.json
 
 # macOS
 .DS_Store
-
-# Generated CSS (rebuild with `npm run build:css`)
-public/output.css
