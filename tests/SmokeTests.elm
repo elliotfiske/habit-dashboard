@@ -5,6 +5,7 @@ import Effect.Lamdera
 import Effect.Test exposing (HttpResponse(..))
 import Effect.Time
 import Frontend
+import Html.Attributes
 import Test exposing (describe)
 import Test.Html.Query
 import Test.Html.Selector
@@ -17,11 +18,18 @@ main =
     Effect.Test.viewer tests
 
 
+{-| January 1, 2026 00:00:00 UTC in milliseconds since epoch.
+-}
+january1st2026 : Int
+january1st2026 =
+    1767225600000
+
+
 tests : List (Effect.Test.EndToEndTest ToBackend FrontendMsg FrontendModel ToFrontend BackendMsg BackendModel)
 tests =
     [ Effect.Test.start
         "Dashboard title renders correctly"
-        (Effect.Time.millisToPosix 0)
+        (Effect.Time.millisToPosix january1st2026)
         config
         [ Effect.Test.connectFrontend
             1000
@@ -30,6 +38,25 @@ tests =
             { width = 800, height = 600 }
             (\client1 ->
                 [ client1.checkView 100 (Test.Html.Query.has [ Test.Html.Selector.text "Habit Dashboard" ])
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Future days should show dash instead of zero"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\client1 ->
+                [ -- January 1, 2026 is a Thursday
+                  -- January 2 is a future day and should show "-"
+                  client1.checkView 100
+                    (Test.Html.Query.find [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "day-2026-01-02") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.text "-" ]
+                    )
                 ]
             )
         ]

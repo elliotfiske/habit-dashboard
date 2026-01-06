@@ -16,9 +16,10 @@ import Effect.Time
 import HabitCalendar exposing (DayEntry, HabitCalendar, HabitCalendarId(..))
 import Html exposing (Html)
 import Html.Attributes as Attr
+import Html.Events as Events
 import Lamdera as L
 import Time.Extra
-import Types exposing (FrontendModel, FrontendMsg(..), ToBackend, ToFrontend(..))
+import Types exposing (FrontendModel, FrontendMsg(..), ToBackend(..), ToFrontend(..), TogglConnectionStatus(..))
 import Url
 
 
@@ -44,6 +45,8 @@ init _ key =
       , currentTime = Nothing
       , currentZone = Nothing
       , calendars = CalendarDict.empty
+      , togglApiKey = ""
+      , togglStatus = NotConnected
       }
     , Command.batch
         [ Effect.Task.perform GotTime Effect.Time.now
@@ -54,7 +57,6 @@ init _ key =
 
 subscriptions : Model -> Subscription FrontendOnly FrontendMsg
 subscriptions _ =
-    -- Time subscription disabled for now (requires Duration import workaround)
     Subscription.none
 
 
@@ -76,6 +78,14 @@ update msg model =
         GotZone zone ->
             ( { model | currentZone = Just zone }, Command.none )
 
+        TogglApiKeyChanged newKey ->
+            ( { model | togglApiKey = newKey }, Command.none )
+
+        SubmitTogglApiKey ->
+            ( { model | togglStatus = Connecting }
+            , Effect.Lamdera.sendToBackend (SetTogglApiKey model.togglApiKey)
+            )
+
 
 updateFromBackend : ToFrontend -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
 updateFromBackend msg model =
@@ -86,6 +96,22 @@ updateFromBackend msg model =
         CalendarsUpdated calendars ->
             ( { model | calendars = calendars }, Command.none )
 
+        TogglWorkspacesReceived result ->
+            case result of
+                Ok workspaces ->
+                    ( { model | togglStatus = Connected workspaces }, Command.none )
+
+                Err errorMsg ->
+                    ( { model | togglStatus = ConnectionError errorMsg }, Command.none )
+
+        TogglProjectsReceived _ ->
+            -- TODO: Handle projects
+            ( model, Command.none )
+
+        TogglTimeEntriesReceived _ ->
+            -- TODO: Handle time entries
+            ( model, Command.none )
+
 
 view : Model -> Effect.Browser.Document FrontendMsg
 view model =
@@ -95,6 +121,7 @@ view model =
         , Html.div [ Attr.class "min-h-screen bg-base-200 p-8" ]
             [ Html.div [ Attr.class "max-w-4xl mx-auto" ]
                 [ header
+                , togglConnectionCard model
                 , mainContent model
                 ]
             ]
@@ -109,6 +136,57 @@ header =
             [ Html.text "Habit Dashboard" ]
         , Html.p [ Attr.class "text-base-content/60 mt-2" ]
             [ Html.text "Track your daily habits" ]
+        ]
+
+
+togglConnectionCard : Model -> Html FrontendMsg
+togglConnectionCard model =
+    Html.div [ Attr.class "card bg-base-100 shadow-lg p-6 mb-8" ]
+        [ Html.h2 [ Attr.class "text-lg font-semibold mb-4" ] [ Html.text "Toggl Connection" ]
+        , case model.togglStatus of
+            NotConnected ->
+                togglApiKeyForm model
+
+            Connecting ->
+                Html.div [ Attr.class "flex items-center gap-2" ]
+                    [ Html.span [ Attr.class "loading loading-spinner loading-sm" ] []
+                    , Html.text "Connecting..."
+                    ]
+
+            Connected workspaces ->
+                Html.div []
+                    [ Html.div [ Attr.class "alert alert-success mb-4" ]
+                        [ Html.text ("Connected! Found " ++ String.fromInt (List.length workspaces) ++ " workspace(s)") ]
+                    , Html.ul [ Attr.class "list-disc list-inside" ]
+                        (List.map (\ws -> Html.li [] [ Html.text ws.name ]) workspaces)
+                    ]
+
+            ConnectionError errorMsg ->
+                Html.div []
+                    [ Html.div [ Attr.class "alert alert-error mb-4" ]
+                        [ Html.text errorMsg ]
+                    , togglApiKeyForm model
+                    ]
+        ]
+
+
+togglApiKeyForm : Model -> Html FrontendMsg
+togglApiKeyForm model =
+    Html.form [ Events.onSubmit SubmitTogglApiKey, Attr.class "flex gap-2" ]
+        [ Html.input
+            [ Attr.type_ "password"
+            , Attr.placeholder "Enter your Toggl API key"
+            , Attr.value model.togglApiKey
+            , Attr.class "input input-bordered flex-1"
+            , Events.onInput TogglApiKeyChanged
+            ]
+            []
+        , Html.button
+            [ Attr.type_ "submit"
+            , Attr.class "btn btn-primary"
+            , Attr.disabled (String.isEmpty model.togglApiKey)
+            ]
+            [ Html.text "Connect" ]
         ]
 
 

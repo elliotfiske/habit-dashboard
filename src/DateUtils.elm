@@ -93,14 +93,19 @@ mondaysAgo weeksBack time =
 compareDays : PointInTime -> PointInTime -> DayComparison
 compareDays reference target =
     let
-        daysDiff : Int
-        daysDiff =
-            Time.Extra.diff Time.Extra.Day reference.zone reference.posix target.posix
+        -- Floor both to start of day to compare calendar dates, not exact times
+        refStartOfDay : Int
+        refStartOfDay =
+            startOfDay reference
+
+        targetStartOfDay : Int
+        targetStartOfDay =
+            startOfDay target
     in
-    if daysDiff == 0 then
+    if targetStartOfDay == refStartOfDay then
         Today
 
-    else if daysDiff > 0 then
+    else if targetStartOfDay > refStartOfDay then
         Future
 
     else

@@ -7,7 +7,8 @@ import Color
 import DateUtils exposing (DayComparison(..), PointInTime, compareDays, formatMonthDay, mondaysAgo, startOfDay)
 import HabitCalendar exposing (HabitCalendar, getMinutesForDay)
 import Html exposing (Html, div, h2, text)
-import Html.Attributes exposing (class, style)
+import Html.Attributes exposing (attribute, class, style)
+import Time
 import Time.Extra
 
 
@@ -99,15 +100,82 @@ dayCell now calendar day =
 
                 _ ->
                     String.fromInt minutes
+
+        testId : String
+        testId =
+            "day-" ++ formatIsoDate day
     in
     div
         [ class ("w-10 h-10 rounded flex flex-col items-center justify-center text-xs " ++ borderClass)
         , style "background-color" bgColor
         , style "color" textColor
+        , attribute "data-testid" testId
         ]
         [ div [ class "text-[10px] opacity-70" ] [ text (formatMonthDay day) ]
         , div [ class "font-medium" ] [ text minuteText ]
         ]
+
+
+{-| Format a date as YYYY-MM-DD for test IDs.
+-}
+formatIsoDate : PointInTime -> String
+formatIsoDate time =
+    let
+        year : String
+        year =
+            Time.toYear time.zone time.posix |> String.fromInt
+
+        month : String
+        month =
+            Time.toMonth time.zone time.posix |> monthToNumber |> String.fromInt |> String.padLeft 2 '0'
+
+        day : String
+        day =
+            Time.toDay time.zone time.posix |> String.fromInt |> String.padLeft 2 '0'
+    in
+    year ++ "-" ++ month ++ "-" ++ day
+
+
+{-| Convert a Month to its number (1-12).
+-}
+monthToNumber : Time.Month -> Int
+monthToNumber m =
+    case m of
+        Time.Jan ->
+            1
+
+        Time.Feb ->
+            2
+
+        Time.Mar ->
+            3
+
+        Time.Apr ->
+            4
+
+        Time.May ->
+            5
+
+        Time.Jun ->
+            6
+
+        Time.Jul ->
+            7
+
+        Time.Aug ->
+            8
+
+        Time.Sep ->
+            9
+
+        Time.Oct ->
+            10
+
+        Time.Nov ->
+            11
+
+        Time.Dec ->
+            12
 
 
 {-| Determine cell colors based on minutes and day comparison.
