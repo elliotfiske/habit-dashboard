@@ -183,7 +183,7 @@ timeEntryDecoder =
         |> DP.optional "description" (D.nullable D.string) Nothing
         |> DP.required "start" iso8601Decoder
         |> DP.optional "stop" (D.nullable iso8601Decoder) Nothing
-        |> DP.required "duration" D.int
+        |> DP.required "seconds" D.int
 
 
 {-| Decode ISO8601 datetime string to Posix.
@@ -497,7 +497,7 @@ webhookPayloadDecoder =
         |> DP.optional "description" (D.nullable D.string) Nothing
         |> DP.required "start" Iso8601.decoder
         |> DP.optional "stop" (D.nullable Iso8601.decoder) Nothing
-        |> DP.required "duration" D.int
+        |> DP.required "seconds" D.int
 
 
 {-| Decoder for the webhook metadata.

@@ -100,7 +100,7 @@ type ToBackend
     | RequestCalendars
     | FetchTogglWorkspaces
     | FetchTogglProjects TogglWorkspaceId
-    | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId Toggl.TogglProjectId String String -- calendarInfo, workspaceId, projectId, startDate, endDate
+    | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId Toggl.TogglProjectId String String Zone -- calendarInfo, workspaceId, projectId, startDate, endDate, userZone
 
 
 {-| Info needed to create a calendar from fetched time entries.
@@ -117,7 +117,7 @@ type BackendMsg
     | ClientDisconnected Effect.Lamdera.SessionId Effect.Lamdera.ClientId
     | GotTogglWorkspaces Effect.Lamdera.ClientId (Result Toggl.TogglApiError (List TogglWorkspace))
     | GotTogglProjects Effect.Lamdera.ClientId (Result Toggl.TogglApiError (List TogglProject))
-    | GotTogglTimeEntries Effect.Lamdera.ClientId CalendarInfo (Result Toggl.TogglApiError (List TimeEntry))
+    | GotTogglTimeEntries Effect.Lamdera.ClientId CalendarInfo Zone (Result Toggl.TogglApiError (List TimeEntry))
     | GotWebhookValidation (Result Http.Error ())
 
 

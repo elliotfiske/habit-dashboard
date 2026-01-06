@@ -186,10 +186,15 @@ update msg model =
 
                                         Nothing ->
                                             ( "2026-01-01", "2026-01-28" )
+
+                                -- Use user's timezone, fallback to UTC if not available
+                                userZone : Time.Zone
+                                userZone =
+                                    Maybe.withDefault Time.utc model.currentZone
                             in
                             ( { model | modalState = ModalClosed }
                             , Effect.Lamdera.sendToBackend
-                                (FetchTogglTimeEntries calendarInfo workspace.id project.id startDate endDate)
+                                (FetchTogglTimeEntries calendarInfo workspace.id project.id startDate endDate userZone)
                             )
 
                         _ ->

@@ -7,14 +7,13 @@ when time entries are created, updated, or deleted.
 
 -}
 
-import Env
 import Http
 import Json.Decode as D
 import Json.Encode as E
 import Lamdera exposing (SessionId, broadcast)
 import LamderaRPC exposing (RPCArgs, RPCResult(..))
 import Toggl
-import Types exposing (BackendModel, BackendMsg(..), ToFrontend(..))
+import Types exposing (BackendModel, BackendMsg, ToFrontend(..))
 
 
 {-| Main entry point for all RPC endpoints.
@@ -46,23 +45,10 @@ handleTogglWebhook _ model jsonArg =
     -- First, try to decode as a validation ping
     case D.decodeValue Toggl.validationCodeDecoder jsonArg of
         Ok validationCode ->
-            -- This is a validation request
-            -- 1. Echo the code back in our response
-            -- 2. Make a GET request to Toggl to confirm the subscription
-            let
-                validationCmd : Cmd BackendMsg
-                validationCmd =
-                    Toggl.validateWebhookSubscription
-                        Env.togglApiKey
-                        { workspaceId = Env.togglWebhookWorkspaceId
-                        , subscriptionId = Env.togglWebhookSubscriptionId
-                        , validationCode = validationCode
-                        }
-                        GotWebhookValidation
-            in
+            -- This is a validation request - just echo the code back
             ( Ok (Toggl.encodeValidationResponse validationCode)
             , model
-            , validationCmd
+            , Cmd.none
             )
 
         Err _ ->

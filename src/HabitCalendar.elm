@@ -62,8 +62,8 @@ emptyCalendar : HabitCalendarId -> String -> HabitCalendar
 emptyCalendar id name =
     { id = id
     , name = name
-    , successColor = Color.rgb255 34 197 94 -- green-500
-    , nonzeroColor = Color.rgb255 134 239 172 -- green-300
+    , successColor = Color.rgb255 168 85 247 -- purple-500
+    , nonzeroColor = Color.rgb255 216 180 254 -- purple-300
     , weeksShowing = 4
     , entries = Dict.empty
     }
@@ -141,8 +141,8 @@ fromTimeEntries calendarId name zone entries =
     in
     { id = calendarId
     , name = name
-    , successColor = Color.rgb255 34 197 94 -- green-500
-    , nonzeroColor = Color.rgb255 134 239 172 -- green-300
+    , successColor = Color.rgb255 168 85 247 -- purple-500
+    , nonzeroColor = Color.rgb255 216 180 254 -- purple-300
     , weeksShowing = 4
     , entries = aggregatedEntries
     }

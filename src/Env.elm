@@ -31,12 +31,3 @@ Find this in your Toggl workspace settings or in the webhook subscription URL.
 togglWebhookWorkspaceId : Int
 togglWebhookWorkspaceId =
     4150145
-
-
-{-| Toggl webhook subscription ID.
-This is assigned when you create the webhook subscription in Toggl.
-You can find it in the Toggl webhook settings: Integrations > Webhooks
--}
-togglWebhookSubscriptionId : Int
-togglWebhookSubscriptionId =
-    0

@@ -7,7 +7,6 @@ import Effect.Subscription as Subscription exposing (Subscription)
 import Env
 import HabitCalendar exposing (HabitCalendarId)
 import Lamdera as L
-import Time
 import Toggl
 import Types exposing (BackendModel, BackendMsg(..), ToBackend(..), ToFrontend(..))
 
@@ -134,15 +133,10 @@ update msg model =
                         (TogglProjectsReceived (Err (Toggl.togglApiErrorToString apiError)))
                     )
 
-        GotTogglTimeEntries clientId calendarInfo result ->
+        GotTogglTimeEntries clientId calendarInfo userZone result ->
             case result of
                 Ok entries ->
                     let
-                        -- Use UTC zone for aggregation
-                        utcZone : Time.Zone
-                        utcZone =
-                            Time.utc
-
                         calendarId : HabitCalendarId
                         calendarId =
                             calendarInfo.calendarId
@@ -151,10 +145,10 @@ update msg model =
                         calendarName =
                             calendarInfo.calendarName
 
-                        -- Create a calendar from the time entries
+                        -- Create a calendar from the time entries using the user's timezone
                         newCalendar : HabitCalendar.HabitCalendar
                         newCalendar =
-                            HabitCalendar.fromTimeEntries calendarId calendarName utcZone entries
+                            HabitCalendar.fromTimeEntries calendarId calendarName userZone entries
 
                         -- Update the calendars dict
                         updatedCalendars : CalendarDict.CalendarDict
@@ -213,7 +207,7 @@ updateFromFrontend _ clientId msg model =
             , Toggl.fetchProjects Env.togglApiKey workspaceId (GotTogglProjects clientId)
             )
 
-        FetchTogglTimeEntries calendarInfo workspaceId projectId startDate endDate ->
+        FetchTogglTimeEntries calendarInfo workspaceId projectId startDate endDate userZone ->
             ( model
             , Toggl.fetchTimeEntries Env.togglApiKey
                 workspaceId
@@ -222,5 +216,5 @@ updateFromFrontend _ clientId msg model =
                 , description = Nothing
                 , projectId = Just projectId
                 }
-                (GotTogglTimeEntries clientId calendarInfo)
+                (GotTogglTimeEntries clientId calendarInfo userZone)
             )
