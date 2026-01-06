@@ -6,6 +6,7 @@ module Types exposing
     , FrontendModel
     , FrontendMsg(..)
     , ModalState(..)
+    , RunningEntry(..)
     , ToBackend(..)
     , ToFrontend(..)
     , TogglConnectionStatus(..)
@@ -16,6 +17,7 @@ import Effect.Browser
 import Effect.Browser.Navigation
 import Effect.Lamdera
 import HabitCalendar exposing (HabitCalendarId)
+import Http
 import Time exposing (Posix, Zone)
 import Toggl exposing (TimeEntry, TogglProject, TogglWorkspace, TogglWorkspaceId)
 import Url exposing (Url)
@@ -30,6 +32,7 @@ type alias FrontendModel =
     , modalState : ModalState
     , availableProjects : List TogglProject -- Projects for the selected workspace
     , projectsLoading : Bool
+    , runningEntry : RunningEntry
     }
 
 
@@ -58,10 +61,19 @@ type TogglConnectionStatus
     | ConnectionError String
 
 
+{-| Represents the current running time entry from Toggl.
+Updated via webhook events.
+-}
+type RunningEntry
+    = NoRunningEntry
+    | RunningEntry Toggl.WebhookPayload
+
+
 type alias BackendModel =
     { calendars : CalendarDict
     , togglWorkspaces : List TogglWorkspace
     , togglProjects : List TogglProject
+    , runningEntry : RunningEntry
     }
 
 
@@ -71,6 +83,9 @@ type FrontendMsg
     | NoOpFrontendMsg
     | GotTime Posix
     | GotZone Zone
+    | Tick Posix -- Timer update every second
+      -- Toggl actions
+    | RefreshWorkspaces
       -- Modal actions
     | OpenCreateCalendarModal
     | CloseModal
@@ -103,6 +118,7 @@ type BackendMsg
     | GotTogglWorkspaces Effect.Lamdera.ClientId (Result Toggl.TogglApiError (List TogglWorkspace))
     | GotTogglProjects Effect.Lamdera.ClientId (Result Toggl.TogglApiError (List TogglProject))
     | GotTogglTimeEntries Effect.Lamdera.ClientId CalendarInfo (Result Toggl.TogglApiError (List TimeEntry))
+    | GotWebhookValidation (Result Http.Error ())
 
 
 type ToFrontend
@@ -111,3 +127,4 @@ type ToFrontend
     | TogglWorkspacesReceived (Result String (List TogglWorkspace))
     | TogglProjectsReceived (Result String (List TogglProject))
     | TogglTimeEntriesReceived (Result String (List TimeEntry))
+    | RunningEntryUpdated RunningEntry

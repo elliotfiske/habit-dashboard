@@ -4,13 +4,15 @@ import Browser
 import Browser.Navigation
 import Calendar
 import CalendarDict
+import DateFormat
 import DateUtils exposing (PointInTime, formatDateForApi)
 import Dict exposing (Dict)
+import Duration
 import Effect.Browser exposing (UrlRequest)
 import Effect.Browser.Navigation
 import Effect.Command as Command exposing (Command, FrontendOnly)
 import Effect.Lamdera
-import Effect.Subscription as Subscription exposing (Subscription)
+import Effect.Subscription exposing (Subscription)
 import Effect.Task
 import Effect.Time
 import HabitCalendar exposing (DayEntry, HabitCalendar, HabitCalendarId(..))
@@ -21,7 +23,7 @@ import Lamdera as L
 import Time
 import Time.Extra
 import Toggl exposing (TogglProject, TogglWorkspace)
-import Types exposing (CreateCalendarModal, FrontendModel, FrontendMsg(..), ModalState(..), ToBackend(..), ToFrontend(..), TogglConnectionStatus(..))
+import Types exposing (CreateCalendarModal, FrontendModel, FrontendMsg(..), ModalState(..), RunningEntry(..), ToBackend(..), ToFrontend(..), TogglConnectionStatus(..))
 import Url
 
 
@@ -47,22 +49,23 @@ init _ key =
       , currentTime = Nothing
       , currentZone = Nothing
       , calendars = CalendarDict.empty
-      , togglStatus = Connecting
+      , togglStatus = NotConnected -- Will be updated when backend sends cached workspaces
       , modalState = ModalClosed
       , availableProjects = []
       , projectsLoading = False
+      , runningEntry = NoRunningEntry
       }
     , Command.batch
         [ Effect.Task.perform GotTime Effect.Time.now
         , Effect.Task.perform GotZone Effect.Time.here
-        , Effect.Lamdera.sendToBackend FetchTogglWorkspaces
         ]
     )
 
 
 subscriptions : Model -> Subscription FrontendOnly FrontendMsg
 subscriptions _ =
-    Subscription.none
+    -- Update every second for the running timer display
+    Effect.Time.every (Duration.seconds 1) Tick
 
 
 update : FrontendMsg -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
@@ -82,6 +85,15 @@ update msg model =
 
         GotZone zone ->
             ( { model | currentZone = Just zone }, Command.none )
+
+        Tick posix ->
+            -- Update current time for the running timer display
+            ( { model | currentTime = Just posix }, Command.none )
+
+        RefreshWorkspaces ->
+            ( { model | togglStatus = Connecting }
+            , Effect.Lamdera.sendToBackend FetchTogglWorkspaces
+            )
 
         OpenCreateCalendarModal ->
             ( { model
@@ -216,6 +228,9 @@ updateFromBackend msg model =
             -- TODO: Handle time entries
             ( model, Command.none )
 
+        RunningEntryUpdated runningEntry ->
+            ( { model | runningEntry = runningEntry }, Command.none )
+
 
 view : Model -> Effect.Browser.Document FrontendMsg
 view model =
@@ -225,6 +240,7 @@ view model =
         , Html.div [ Attr.class "min-h-screen bg-base-200 p-8" ]
             [ Html.div [ Attr.class "max-w-4xl mx-auto" ]
                 [ header
+                , runningTimerHeader model
                 , togglConnectionCard model
                 , mainContent model
                 ]
@@ -244,13 +260,99 @@ header =
         ]
 
 
+{-| Display the current running timer from Toggl at the top of the page.
+-}
+runningTimerHeader : Model -> Html FrontendMsg
+runningTimerHeader model =
+    case model.runningEntry of
+        NoRunningEntry ->
+            Html.text ""
+
+        RunningEntry payload ->
+            let
+                description : String
+                description =
+                    Maybe.withDefault "(no description)" payload.description
+
+                timerText : String
+                timerText =
+                    case model.currentTime of
+                        Just now ->
+                            relativeTimer now payload.start
+
+                        Nothing ->
+                            "--:--:--"
+            in
+            Html.div [ Attr.class "card bg-primary text-primary-content shadow-lg p-4 mb-6" ]
+                [ Html.div [ Attr.class "flex items-center justify-between" ]
+                    [ Html.div [ Attr.class "flex items-center gap-3" ]
+                        [ Html.span [ Attr.class "loading loading-ring loading-md" ] []
+                        , Html.div []
+                            [ Html.div [ Attr.class "font-semibold text-lg" ] [ Html.text description ]
+                            , Html.div [ Attr.class "text-sm opacity-80" ] [ Html.text "Currently tracking" ]
+                            ]
+                        ]
+                    , Html.div [ Attr.class "text-3xl font-mono font-bold" ]
+                        [ Html.text timerText ]
+                    ]
+                ]
+
+
+{-| Format the elapsed time between now and start as HH:MM:SS or D:HH:MM:SS.
+-}
+relativeTimer : Time.Posix -> Time.Posix -> String
+relativeTimer now start =
+    let
+        diff : Int
+        diff =
+            (Time.posixToMillis now - Time.posixToMillis start) // 1000
+    in
+    if diff < 0 then
+        "in the future"
+
+    else
+        let
+            dayNum : Int
+            dayNum =
+                diff // 60 // 60 // 24
+
+            seconds : String
+            seconds =
+                String.padLeft 2 '0' (String.fromInt (remainderBy 60 diff))
+
+            minutes : String
+            minutes =
+                String.padLeft 2 '0' (String.fromInt (remainderBy 60 (diff // 60)))
+
+            hours : String
+            hours =
+                String.padLeft 2 '0' (String.fromInt (remainderBy 24 (diff // 60 // 60)))
+
+            days : String
+            days =
+                if dayNum == 0 then
+                    ""
+
+                else
+                    String.fromInt dayNum ++ ":"
+        in
+        days ++ hours ++ ":" ++ minutes ++ ":" ++ seconds
+
+
 togglConnectionCard : Model -> Html FrontendMsg
 togglConnectionCard model =
     Html.div [ Attr.class "card bg-base-100 shadow-lg p-6 mb-8" ]
         [ case model.togglStatus of
             NotConnected ->
-                Html.div [ Attr.class "flex items-center gap-2 text-base-content/60" ]
-                    [ Html.text "Not connected to Toggl" ]
+                Html.div [ Attr.class "flex items-center justify-between" ]
+                    [ Html.div [ Attr.class "flex items-center gap-2 text-base-content/60" ]
+                        [ Html.text "Not connected to Toggl" ]
+                    , Html.button
+                        [ Attr.class "btn btn-outline btn-sm"
+                        , Events.onClick RefreshWorkspaces
+                        ]
+                        [ Html.text "Connect to Toggl" ]
+                    ]
 
             Connecting ->
                 Html.div [ Attr.class "flex items-center gap-2" ]
@@ -264,28 +366,54 @@ togglConnectionCard model =
                         [ Html.span [ Attr.class "text-lg" ] [ Html.text "✓" ]
                         , Html.text ("Connected · " ++ String.fromInt (List.length workspaces) ++ " workspace(s)")
                         ]
-                    , Html.button
-                        [ Attr.class "btn btn-primary"
-                        , Events.onClick OpenCreateCalendarModal
+                    , Html.div [ Attr.class "flex items-center gap-2" ]
+                        [ Html.button
+                            [ Attr.class "btn btn-ghost btn-sm"
+                            , Events.onClick RefreshWorkspaces
+                            , Attr.title "Refresh workspaces from Toggl"
+                            ]
+                            [ Html.text "🔄" ]
+                        , Html.button
+                            [ Attr.class "btn btn-primary"
+                            , Events.onClick OpenCreateCalendarModal
+                            ]
+                            [ Html.text "+ New Calendar" ]
                         ]
-                        [ Html.text "+ New Calendar" ]
                     ]
 
             ConnectionError errorMsg ->
                 if String.startsWith "RATE_LIMIT:" errorMsg then
                     let
-                        -- Parse format: "RATE_LIMIT:Xm Ys|message"
-                        afterPrefix : String
-                        afterPrefix =
-                            String.dropLeft 11 errorMsg
+                        resetTimeStr : String
+                        resetTimeStr =
+                            case ( model.currentTime, model.currentZone ) of
+                                ( Just now, Just zone ) ->
+                                    let
+                                        -- Parse format: "RATE_LIMIT:seconds|message"
+                                        afterPrefix : String
+                                        afterPrefix =
+                                            String.dropLeft 11 errorMsg
 
-                        parts : List String
-                        parts =
-                            String.split "|" afterPrefix
+                                        parts : List String
+                                        parts =
+                                            String.split "|" afterPrefix
 
-                        timeRemaining : String
-                        timeRemaining =
-                            List.head parts |> Maybe.withDefault "unknown"
+                                        secondsStr : String
+                                        secondsStr =
+                                            List.head parts |> Maybe.withDefault "0"
+
+                                        seconds : Int
+                                        seconds =
+                                            String.toInt secondsStr |> Maybe.withDefault 3600
+
+                                        resetPosix : Time.Posix
+                                        resetPosix =
+                                            Time.millisToPosix (Time.posixToMillis now + seconds * 1000)
+                                    in
+                                    formatTime zone resetPosix
+
+                                _ ->
+                                    "soon"
                     in
                     Html.div [ Attr.class "flex flex-col gap-3" ]
                         [ Html.div [ Attr.class "alert alert-warning" ]
@@ -293,9 +421,9 @@ togglConnectionCard model =
                                 [ Html.div [ Attr.class "font-semibold" ]
                                     [ Html.text "⏱️ Toggl API Rate Limit Exceeded" ]
                                 , Html.div []
-                                    [ Html.text ("You've hit the hourly API limit. Resets in " ++ timeRemaining ++ ".") ]
+                                    [ Html.text ("You've hit the hourly API limit. Resets at " ++ resetTimeStr ++ ".") ]
                                 , Html.div [ Attr.class "text-sm opacity-80 mt-2" ]
-                                    [ Html.text "Tip: Refresh the page after the timer expires to reconnect." ]
+                                    [ Html.text "Tip: Refresh the page after that time to reconnect." ]
                                 ]
                             ]
                         ]
@@ -304,6 +432,21 @@ togglConnectionCard model =
                     Html.div [ Attr.class "alert alert-error" ]
                         [ Html.text ("Connection error: " ++ errorMsg) ]
         ]
+
+
+{-| Format a time as "10:02 PM" style.
+-}
+formatTime : Time.Zone -> Time.Posix -> String
+formatTime zone posix =
+    DateFormat.format
+        [ DateFormat.hourNumber
+        , DateFormat.text ":"
+        , DateFormat.minuteFixed
+        , DateFormat.text " "
+        , DateFormat.amPmUppercase
+        ]
+        zone
+        posix
 
 
 mainContent : Model -> Html FrontendMsg

@@ -66,6 +66,7 @@ init =
     ( { calendars = CalendarDict.empty
       , togglWorkspaces = []
       , togglProjects = []
+      , runningEntry = Types.NoRunningEntry
       }
     , Command.none
     )
@@ -92,9 +93,14 @@ update msg model =
 
                     else
                         Effect.Lamdera.sendToFrontend clientId (TogglWorkspacesReceived (Ok model.togglWorkspaces))
+
+                -- Send current running entry
+                runningEntryCmd : Command BackendOnly ToFrontend BackendMsg
+                runningEntryCmd =
+                    Effect.Lamdera.sendToFrontend clientId (RunningEntryUpdated model.runningEntry)
             in
             ( model
-            , Command.batch [ calendarsCmd, workspacesCmd ]
+            , Command.batch [ calendarsCmd, workspacesCmd, runningEntryCmd ]
             )
 
         ClientDisconnected _ _ ->
@@ -167,6 +173,23 @@ update msg model =
                     , Effect.Lamdera.sendToFrontend clientId
                         (TogglTimeEntriesReceived (Err (Toggl.togglApiErrorToString apiError)))
                     )
+
+        GotWebhookValidation result ->
+            -- Log the result but don't need to do anything else
+            case result of
+                Ok () ->
+                    let
+                        _ =
+                            Debug.log "Webhook validation" "SUCCESS"
+                    in
+                    ( model, Command.none )
+
+                Err err ->
+                    let
+                        _ =
+                            Debug.log "Webhook validation FAILED" err
+                    in
+                    ( model, Command.none )
 
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Command BackendOnly ToFrontend BackendMsg )

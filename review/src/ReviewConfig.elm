@@ -34,22 +34,34 @@ import Review.Rule as Rule exposing (Rule)
 
 config : List Rule
 config =
+    let
+        -- LamderaRPC.elm is a library file that gets overwritten in production
+        -- RPC.elm uses a magic function name that Lamdera looks for
+        lamderaRpcFiles : List String
+        lamderaRpcFiles =
+            [ "src/LamderaRPC.elm", "src/RPC.elm" ]
+    in
     [ Docs.ReviewAtDocs.rule
     , NoConfusingPrefixOperator.rule
     , NoDebug.Log.rule
+        |> Rule.ignoreErrorsForFiles (lamderaRpcFiles ++ [ "src/Backend.elm" ])
     , NoDebug.TodoOrToString.rule
         |> Rule.ignoreErrorsForDirectories [ "tests/" ]
     , NoExposingEverything.rule
         |> Rule.ignoreErrorsForDirectories [ "src/Evergreen/" ]
+        |> Rule.ignoreErrorsForFiles lamderaRpcFiles
     , NoImportingEverything.rule []
+        |> Rule.ignoreErrorsForFiles lamderaRpcFiles
     , NoMissingTypeAnnotation.rule
+        |> Rule.ignoreErrorsForFiles lamderaRpcFiles
     , NoMissingTypeAnnotationInLetIn.rule
+        |> Rule.ignoreErrorsForFiles lamderaRpcFiles
     , NoMissingTypeExpose.rule
     , NoSimpleLetBody.rule
     , NoPrematureLetComputation.rule
     , NoUnused.Exports.rule
         |> Rule.ignoreErrorsForDirectories [ "tests/", "src/Evergreen/" ]
-        |> Rule.ignoreErrorsForFiles [ "src/Env.elm", "src/CalendarDict.elm", "src/HabitCalendar.elm", "src/Toggl.elm" ]
+        |> Rule.ignoreErrorsForFiles ([ "src/Env.elm", "src/CalendarDict.elm", "src/HabitCalendar.elm", "src/Toggl.elm" ] ++ lamderaRpcFiles)
     , NoUnused.Parameters.rule
     , NoUnused.Patterns.rule
     , NoUnused.Variables.rule

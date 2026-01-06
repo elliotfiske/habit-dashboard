@@ -7,7 +7,12 @@ module Toggl exposing
     , TogglProjectId(..)
     , TogglWorkspace
     , TogglWorkspaceId(..)
+    , WebhookAction(..)
+    , WebhookEvent
+    , WebhookMetadata
+    , WebhookPayload
     , authHeader
+    , encodeValidationResponse
     , fetchProjects
     , fetchTimeEntries
     , fetchWorkspaces
@@ -18,6 +23,9 @@ module Toggl exposing
     , togglProjectIdToInt
     , togglProjectIdToString
     , togglWorkspaceIdToInt
+    , validateWebhookSubscription
+    , validationCodeDecoder
+    , webhookEventDecoder
     , workspaceDecoder
     )
 
@@ -31,6 +39,7 @@ import Base64
 import Duration
 import Effect.Command
 import Effect.Http
+import Http
 import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.Decode.Pipeline as DP
@@ -231,24 +240,8 @@ togglApiErrorToString : TogglApiError -> String
 togglApiErrorToString error =
     case error of
         RateLimited { secondsUntilReset, message } ->
-            let
-                minutes : Int
-                minutes =
-                    secondsUntilReset // 60
-
-                seconds : Int
-                seconds =
-                    modBy 60 secondsUntilReset
-
-                timeStr : String
-                timeStr =
-                    if minutes > 0 then
-                        String.fromInt minutes ++ "m " ++ String.fromInt seconds ++ "s"
-
-                    else
-                        String.fromInt seconds ++ "s"
-            in
-            "RATE_LIMIT:" ++ timeStr ++ "|" ++ message
+            -- Pass raw seconds so Frontend can calculate the absolute reset time
+            "RATE_LIMIT:" ++ String.fromInt secondsUntilReset ++ "|" ++ message
 
         HttpError httpError ->
             case httpError of
@@ -437,3 +430,157 @@ fetchTimeEntries apiKey workspaceId options toMsg =
         , timeout = Just (Duration.seconds 10)
         , tracker = Nothing
         }
+
+
+
+-- WEBHOOK TYPES
+
+
+{-| A webhook event from Toggl.
+Toggl sends these when time entries are created, updated, or deleted.
+-}
+type alias WebhookEvent =
+    { payload : WebhookPayload
+    , metadata : WebhookMetadata
+    }
+
+
+{-| The payload of a webhook event - represents a time entry.
+-}
+type alias WebhookPayload =
+    { id : TimeEntryId
+    , projectId : Maybe TogglProjectId
+    , workspaceId : TogglWorkspaceId
+    , description : Maybe String
+    , start : Posix
+    , stop : Maybe Posix
+    , duration : Int -- seconds, -1 if running
+    }
+
+
+{-| Metadata about the webhook event (what action triggered it).
+-}
+type alias WebhookMetadata =
+    { action : WebhookAction
+    }
+
+
+{-| The type of action that triggered the webhook.
+-}
+type WebhookAction
+    = Created
+    | Updated
+    | Deleted
+
+
+
+-- WEBHOOK DECODERS
+
+
+{-| Decoder for the top-level webhook event.
+-}
+webhookEventDecoder : Decoder WebhookEvent
+webhookEventDecoder =
+    D.succeed WebhookEvent
+        |> DP.required "payload" webhookPayloadDecoder
+        |> DP.required "metadata" webhookMetadataDecoder
+
+
+{-| Decoder for the webhook payload (time entry data).
+-}
+webhookPayloadDecoder : Decoder WebhookPayload
+webhookPayloadDecoder =
+    D.succeed WebhookPayload
+        |> DP.required "id" (D.map TimeEntryId D.int)
+        |> DP.optional "project_id" (D.nullable (D.map TogglProjectId D.int)) Nothing
+        |> DP.required "workspace_id" (D.map TogglWorkspaceId D.int)
+        |> DP.optional "description" (D.nullable D.string) Nothing
+        |> DP.required "start" Iso8601.decoder
+        |> DP.optional "stop" (D.nullable Iso8601.decoder) Nothing
+        |> DP.required "duration" D.int
+
+
+{-| Decoder for the webhook metadata.
+-}
+webhookMetadataDecoder : Decoder WebhookMetadata
+webhookMetadataDecoder =
+    D.succeed WebhookMetadata
+        |> DP.required "action" webhookActionDecoder
+
+
+{-| Decoder for the webhook action string.
+-}
+webhookActionDecoder : Decoder WebhookAction
+webhookActionDecoder =
+    D.string
+        |> D.andThen
+            (\actionStr ->
+                case String.toLower actionStr of
+                    "created" ->
+                        D.succeed Created
+
+                    "updated" ->
+                        D.succeed Updated
+
+                    "deleted" ->
+                        D.succeed Deleted
+
+                    other ->
+                        D.fail ("Unknown webhook action: " ++ other)
+            )
+
+
+{-| Decoder for the validation ping request.
+Toggl sends this to verify the webhook endpoint.
+-}
+validationCodeDecoder : Decoder String
+validationCodeDecoder =
+    D.field "validation_code" D.string
+
+
+{-| Encode a validation response to send back to Toggl.
+-}
+encodeValidationResponse : String -> E.Value
+encodeValidationResponse code =
+    E.object [ ( "validation_code", E.string code ) ]
+
+
+{-| Validate a webhook subscription with Toggl.
+This must be called when we receive a validation ping from Toggl.
+Makes a GET request to confirm the subscription is valid.
+
+<https://developers.track.toggl.com/docs/webhooks#validate-subscription>
+
+-}
+validateWebhookSubscription :
+    ApiKey
+    -> { workspaceId : Int, subscriptionId : Int, validationCode : String }
+    -> (Result Http.Error () -> msg)
+    -> Cmd msg
+validateWebhookSubscription apiKey options toMsg =
+    let
+        url : String
+        url =
+            "https://api.track.toggl.com/webhooks/api/v1/validate/"
+                ++ String.fromInt options.workspaceId
+                ++ "/"
+                ++ String.fromInt options.subscriptionId
+                ++ "/"
+                ++ options.validationCode
+    in
+    Http.request
+        { method = "GET"
+        , headers = [ Http.header "Authorization" (apiKeyToAuthHeader apiKey) ]
+        , url = url
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever toMsg
+        , timeout = Just 10000
+        , tracker = Nothing
+        }
+
+
+{-| Convert API key to Basic Auth header value.
+-}
+apiKeyToAuthHeader : ApiKey -> String
+apiKeyToAuthHeader apiKey =
+    "Basic " ++ Base64.encode (apiKey ++ ":api_token")

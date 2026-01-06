@@ -1,4 +1,4 @@
-module Env exposing (Mode(..), mode, togglApiKey)
+module Env exposing (Mode(..), mode, togglApiKey, togglWebhookSubscriptionId, togglWebhookWorkspaceId)
 
 -- The Env.elm file is for per-environment configuration.
 -- See https://dashboard.lamdera.app/docs/environment for more info.
@@ -16,7 +16,27 @@ mode =
 
 {-| Toggl API key for accessing the Toggl Track API.
 Get yours from: <https://track.toggl.com/profile> (scroll to "API Token")
+
+This actual value must not be committed to the repo. However, it must be set for the local dev server to work.
+
 -}
 togglApiKey : String
 togglApiKey =
     ""
+
+
+{-| Toggl workspace ID for webhook subscription.
+Find this in your Toggl workspace settings or in the webhook subscription URL.
+-}
+togglWebhookWorkspaceId : Int
+togglWebhookWorkspaceId =
+    4150145
+
+
+{-| Toggl webhook subscription ID.
+This is assigned when you create the webhook subscription in Toggl.
+You can find it in the Toggl webhook settings: Integrations > Webhooks
+-}
+togglWebhookSubscriptionId : Int
+togglWebhookSubscriptionId =
+    0
