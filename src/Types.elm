@@ -10,6 +10,7 @@ module Types exposing
     , ToBackend(..)
     , ToFrontend(..)
     , TogglConnectionStatus(..)
+    , WebhookDebugEntry
     )
 
 import CalendarDict exposing (CalendarDict)
@@ -33,6 +34,17 @@ type alias FrontendModel =
     , availableProjects : List TogglProject -- Projects for the selected workspace
     , projectsLoading : Bool
     , runningEntry : RunningEntry
+    , webhookDebugLog : List WebhookDebugEntry -- Recent webhook events for debugging
+    }
+
+
+{-| A debug entry for tracking incoming webhook requests.
+-}
+type alias WebhookDebugEntry =
+    { timestamp : Posix
+    , eventType : String -- "validation" or "event"
+    , description : String
+    , rawJson : String
     }
 
 
@@ -128,3 +140,4 @@ type ToFrontend
     | TogglProjectsReceived (Result String (List TogglProject))
     | TogglTimeEntriesReceived (Result String (List TimeEntry))
     | RunningEntryUpdated RunningEntry
+    | WebhookDebugEvent WebhookDebugEntry

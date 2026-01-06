@@ -10,10 +10,11 @@ when time entries are created, updated, or deleted.
 import Http
 import Json.Decode as D
 import Json.Encode as E
-import Lamdera exposing (SessionId, broadcast)
+import Lamdera
 import LamderaRPC exposing (RPCArgs, RPCResult(..))
+import Time
 import Toggl
-import Types exposing (BackendModel, BackendMsg, ToFrontend(..))
+import Types exposing (BackendModel, BackendMsg, ToFrontend(..), WebhookDebugEntry)
 
 
 {-| Main entry point for all RPC endpoints.
@@ -40,20 +41,56 @@ Toggl sends two types of requests:
 2.  Event notification: { "payload": ..., "metadata": { "action": "..." } }
 
 -}
-handleTogglWebhook : SessionId -> BackendModel -> E.Value -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
+handleTogglWebhook : Lamdera.SessionId -> BackendModel -> E.Value -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
 handleTogglWebhook _ model jsonArg =
-    -- First, try to decode as a validation ping
-    case D.decodeValue Toggl.validationCodeDecoder jsonArg of
-        Ok validationCode ->
-            -- This is a validation request - just echo the code back
-            ( Ok (Toggl.encodeValidationResponse validationCode)
+    -- First, check for "ping" validation (payload: "ping")
+    case D.decodeValue Toggl.pingValidationDecoder jsonArg of
+        Ok True ->
+            -- This is a ping validation - just respond with success
+            let
+                debugEntry : WebhookDebugEntry
+                debugEntry =
+                    { timestamp = Time.millisToPosix 0 -- Placeholder timestamp
+                    , eventType = "validation"
+                    , description = "Ping validation"
+                    , rawJson = E.encode 2 jsonArg
+                    }
+
+                debugCmd : Cmd BackendMsg
+                debugCmd =
+                    Lamdera.broadcast (WebhookDebugEvent debugEntry)
+            in
+            ( Ok (E.object [ ( "status", E.string "ok" ) ])
             , model
-            , Cmd.none
+            , debugCmd
             )
 
-        Err _ ->
-            -- Not a validation request, try to decode as a webhook event
-            handleTogglEvent model jsonArg
+        _ ->
+            -- Not a ping validation, try validation_code format
+            case D.decodeValue Toggl.validationCodeDecoder jsonArg of
+                Ok validationCode ->
+                    -- This is a validation request - just echo the code back
+                    let
+                        debugEntry : WebhookDebugEntry
+                        debugEntry =
+                            { timestamp = Time.millisToPosix 0 -- Placeholder timestamp
+                            , eventType = "validation"
+                            , description = "Validation ping: " ++ validationCode
+                            , rawJson = E.encode 2 jsonArg
+                            }
+
+                        debugCmd : Cmd BackendMsg
+                        debugCmd =
+                            Lamdera.broadcast (WebhookDebugEvent debugEntry)
+                    in
+                    ( Ok (Toggl.encodeValidationResponse validationCode)
+                    , model
+                    , debugCmd
+                    )
+
+                Err _ ->
+                    -- Not a validation request, try to decode as a webhook event
+                    handleTogglEvent model jsonArg
 
 
 {-| Handle an actual Toggl webhook event (created/updated/deleted).
@@ -73,24 +110,64 @@ handleTogglEvent model jsonArg =
                 updatedModel =
                     { model | runningEntry = newRunningEntry }
 
-                -- Broadcast the running entry update to all connected clients
-                broadcastRunningEntryCmd : Cmd BackendMsg
-                broadcastRunningEntryCmd =
-                    broadcast (RunningEntryUpdated newRunningEntry)
+                -- Create debug entry
+                debugEntry : WebhookDebugEntry
+                debugEntry =
+                    { timestamp = Time.millisToPosix 0 -- Placeholder timestamp
+                    , eventType = "event"
+                    , description =
+                        "Action: "
+                            ++ actionToString webhookEvent.metadata.action
+                            ++ ", Description: "
+                            ++ Maybe.withDefault "(none)" webhookEvent.payload.description
+                    , rawJson = E.encode 2 jsonArg
+                    }
+
+                -- Broadcast commands
+                broadcastCmds : Cmd BackendMsg
+                broadcastCmds =
+                    Cmd.batch
+                        [ Lamdera.broadcast (RunningEntryUpdated newRunningEntry)
+                        , Lamdera.broadcast (WebhookDebugEvent debugEntry)
+                        ]
 
                 _ =
                     Debug.log "Webhook event processed" webhookEvent
             in
             ( Ok (E.object [ ( "status", E.string "ok" ) ])
             , updatedModel
-            , broadcastRunningEntryCmd
+            , broadcastCmds
             )
 
         Err decodeError ->
+            let
+                debugEntry : WebhookDebugEntry
+                debugEntry =
+                    { timestamp = Time.millisToPosix 0
+                    , eventType = "error"
+                    , description = "Failed to decode: " ++ D.errorToString decodeError
+                    , rawJson = E.encode 2 jsonArg
+                    }
+            in
             ( Err (Http.BadBody ("Failed to decode webhook event: " ++ D.errorToString decodeError))
             , model
-            , Cmd.none
+            , Lamdera.broadcast (WebhookDebugEvent debugEntry)
             )
+
+
+{-| Convert webhook action to string for display.
+-}
+actionToString : Toggl.WebhookAction -> String
+actionToString action =
+    case action of
+        Toggl.Created ->
+            "created"
+
+        Toggl.Updated ->
+            "updated"
+
+        Toggl.Deleted ->
+            "deleted"
 
 
 {-| Calculate the new running entry state based on a webhook event.

@@ -1,4 +1,4 @@
-module Env exposing (Mode(..), mode, togglApiKey, togglWebhookSubscriptionId, togglWebhookWorkspaceId)
+module Env exposing (Mode(..), mode, togglApiKey, togglWebhookWorkspaceId)
 
 -- The Env.elm file is for per-environment configuration.
 -- See https://dashboard.lamdera.app/docs/environment for more info.

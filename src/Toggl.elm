@@ -16,6 +16,7 @@ module Toggl exposing
     , fetchProjects
     , fetchTimeEntries
     , fetchWorkspaces
+    , pingValidationDecoder
     , projectDecoder
     , timeEntriesSearchDecoder
     , timeEntryIdToInt
@@ -497,7 +498,7 @@ webhookPayloadDecoder =
         |> DP.optional "description" (D.nullable D.string) Nothing
         |> DP.required "start" Iso8601.decoder
         |> DP.optional "stop" (D.nullable Iso8601.decoder) Nothing
-        |> DP.required "seconds" D.int
+        |> DP.required "duration" D.int
 
 
 {-| Decoder for the webhook metadata.
@@ -536,6 +537,23 @@ Toggl sends this to verify the webhook endpoint.
 validationCodeDecoder : Decoder String
 validationCodeDecoder =
     D.field "validation_code" D.string
+
+
+{-| Decoder for the "ping" validation request.
+Toggl also sends validation requests with payload: "ping".
+Returns True if it's a ping validation.
+-}
+pingValidationDecoder : Decoder Bool
+pingValidationDecoder =
+    D.field "payload" D.string
+        |> D.andThen
+            (\payload ->
+                if payload == "ping" then
+                    D.succeed True
+
+                else
+                    D.fail "Not a ping validation"
+            )
 
 
 {-| Encode a validation response to send back to Toggl.

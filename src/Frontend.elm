@@ -54,6 +54,7 @@ init _ key =
       , availableProjects = []
       , projectsLoading = False
       , runningEntry = NoRunningEntry
+      , webhookDebugLog = []
       }
     , Command.batch
         [ Effect.Task.perform GotTime Effect.Time.now
@@ -236,6 +237,16 @@ updateFromBackend msg model =
         RunningEntryUpdated runningEntry ->
             ( { model | runningEntry = runningEntry }, Command.none )
 
+        WebhookDebugEvent entry ->
+            -- Keep last 20 webhook events for debugging
+            let
+                updatedLog : List Types.WebhookDebugEntry
+                updatedLog =
+                    (entry :: model.webhookDebugLog)
+                        |> List.take 20
+            in
+            ( { model | webhookDebugLog = updatedLog }, Command.none )
+
 
 view : Model -> Effect.Browser.Document FrontendMsg
 view model =
@@ -248,6 +259,7 @@ view model =
                 , runningTimerHeader model
                 , togglConnectionCard model
                 , mainContent model
+                , webhookDebugView model
                 ]
             ]
         , viewModal model
@@ -266,12 +278,20 @@ header =
 
 
 {-| Display the current running timer from Toggl at the top of the page.
+Shows "No timer running" when there's no active timer.
 -}
 runningTimerHeader : Model -> Html FrontendMsg
 runningTimerHeader model =
     case model.runningEntry of
         NoRunningEntry ->
-            Html.text ""
+            Html.div [ Attr.class "card bg-base-200 text-base-content shadow-lg p-4 mb-6" ]
+                [ Html.div [ Attr.class "flex items-center justify-center gap-3" ]
+                    [ Html.div [ Attr.class "text-center" ]
+                        [ Html.div [ Attr.class "font-semibold text-lg opacity-60" ] [ Html.text "No timer running" ]
+                        , Html.div [ Attr.class "text-sm opacity-40" ] [ Html.text "Start a timer in Toggl Track" ]
+                        ]
+                    ]
+                ]
 
         RunningEntry payload ->
             let
@@ -528,6 +548,63 @@ viewCalendar : PointInTime -> HabitCalendar -> Html FrontendMsg
 viewCalendar now calendar =
     Html.div [ Attr.class "card bg-base-100 shadow-lg p-6" ]
         [ Calendar.viewWithTitle now calendar ]
+
+
+{-| Display webhook debug log for troubleshooting webhook events.
+-}
+webhookDebugView : Model -> Html FrontendMsg
+webhookDebugView model =
+    if List.isEmpty model.webhookDebugLog then
+        Html.text ""
+
+    else
+        Html.div [ Attr.class "mt-8" ]
+            [ Html.div [ Attr.class "card bg-base-100 shadow-lg" ]
+                [ Html.div [ Attr.class "card-body" ]
+                    [ Html.h2 [ Attr.class "card-title text-base-content" ]
+                        [ Html.text "Webhook Debug Log"
+                        , Html.span [ Attr.class "badge badge-info" ]
+                            [ Html.text (String.fromInt (List.length model.webhookDebugLog)) ]
+                        ]
+                    , Html.div [ Attr.class "space-y-2 max-h-96 overflow-y-auto" ]
+                        (List.map viewWebhookDebugEntry model.webhookDebugLog)
+                    ]
+                ]
+            ]
+
+
+{-| View a single webhook debug entry.
+-}
+viewWebhookDebugEntry : Types.WebhookDebugEntry -> Html FrontendMsg
+viewWebhookDebugEntry entry =
+    let
+        badgeClass : String
+        badgeClass =
+            case entry.eventType of
+                "validation" ->
+                    "badge-success"
+
+                "event" ->
+                    "badge-info"
+
+                "error" ->
+                    "badge-error"
+
+                _ ->
+                    "badge-ghost"
+    in
+    Html.div [ Attr.class "collapse collapse-arrow bg-base-200" ]
+        [ Html.input [ Attr.type_ "checkbox", Attr.class "peer" ] []
+        , Html.div [ Attr.class "collapse-title font-medium flex items-center gap-2" ]
+            [ Html.span [ Attr.class ("badge " ++ badgeClass) ]
+                [ Html.text entry.eventType ]
+            , Html.text entry.description
+            ]
+        , Html.div [ Attr.class "collapse-content" ]
+            [ Html.pre [ Attr.class "bg-base-300 p-3 rounded text-xs overflow-x-auto" ]
+                [ Html.text entry.rawJson ]
+            ]
+        ]
 
 
 {-| View the modal overlay if a modal is open.
