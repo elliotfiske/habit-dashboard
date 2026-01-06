@@ -108,9 +108,21 @@ update msg model =
         GotTogglWorkspaces clientId result ->
             case result of
                 Ok workspaces ->
-                    ( { model | togglWorkspaces = workspaces }
-                    , Effect.Lamdera.sendToFrontend clientId
-                        (TogglWorkspacesReceived (Ok workspaces))
+                    let
+                        -- Fetch projects for all workspaces
+                        fetchProjectsCommands =
+                            List.map
+                                (\workspace ->
+                                    Toggl.fetchProjects Env.togglApiKey workspace.id (GotTogglProjects clientId)
+                                )
+                                workspaces
+                    in
+                    ( { model | togglWorkspaces = workspaces, togglProjects = [] }
+                    , Command.batch
+                        (Effect.Lamdera.sendToFrontend clientId
+                            (TogglWorkspacesReceived (Ok workspaces))
+                            :: fetchProjectsCommands
+                        )
                     )
 
                 Err apiError ->
@@ -122,9 +134,15 @@ update msg model =
         GotTogglProjects clientId result ->
             case result of
                 Ok projects ->
-                    ( { model | togglProjects = projects }
+                    let
+                        -- Append new projects to existing ones (we fetch from multiple workspaces)
+                        allProjects : List Toggl.TogglProject
+                        allProjects =
+                            model.togglProjects ++ projects
+                    in
+                    ( { model | togglProjects = allProjects }
                     , Effect.Lamdera.sendToFrontend clientId
-                        (TogglProjectsReceived (Ok projects))
+                        (TogglProjectsReceived (Ok allProjects))
                     )
 
                 Err apiError ->

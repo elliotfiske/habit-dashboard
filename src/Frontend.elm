@@ -307,8 +307,28 @@ runningTimerHeader model =
 
                         Nothing ->
                             "--:--:--"
+
+                -- Look up the project to get its color
+                maybeProject : Maybe TogglProject
+                maybeProject =
+                    payload.projectId
+                        |> Maybe.andThen
+                            (\projectId ->
+                                List.filter (\p -> p.id == projectId) model.availableProjects
+                                    |> List.head
+                            )
+
+                -- Use project color if available, otherwise use default primary color
+                bgStyle : Html.Attribute FrontendMsg
+                bgStyle =
+                    case maybeProject of
+                        Just project ->
+                            Attr.style "background-color" project.color
+
+                        Nothing ->
+                            Attr.class "bg-primary"
             in
-            Html.div [ Attr.class "card bg-primary text-primary-content shadow-lg p-4 mb-6" ]
+            Html.div [ Attr.class "card text-primary-content shadow-lg p-4 mb-6", bgStyle ]
                 [ Html.div [ Attr.class "flex items-center justify-between" ]
                     [ Html.div [ Attr.class "flex items-center gap-3" ]
                         [ Html.span [ Attr.class "loading loading-ring loading-md" ] []
