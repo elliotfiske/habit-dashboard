@@ -313,6 +313,26 @@ tests =
                 ]
             )
         ]
+    , Effect.Test.start
+        "Stop button UI elements have correct test IDs"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Verify no-timer banner exists with correct test ID
+                  actions.checkView 100
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "no-timer-banner") ]
+                        >> Test.Html.Query.has
+                            [ Test.Html.Selector.text "No timer running" ]
+                    )
+                ]
+            )
+        ]
     ]
 
 
