@@ -2312,6 +2312,10 @@ details.collapse summary::-webkit-details-marker {
   margin-top: 0px;
 }
 
+.visible {
+  visibility: visible;
+}
+
 .collapse {
   visibility: collapse;
 }
@@ -2590,6 +2594,11 @@ details.collapse summary::-webkit-details-marker {
 .text-success {
   --tw-text-opacity: 1;
   color: var(--fallback-su,oklch(var(--su)/var(--tw-text-opacity, 1)));
+}
+
+.text-white {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
 }
 
 .opacity-50 {
