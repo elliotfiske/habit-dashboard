@@ -857,14 +857,14 @@ viewCalendars now model =
             CalendarDict.values model.calendars
     in
     if List.isEmpty calendars then
-        [ viewDemoCalendar now ]
+        [ viewDemoCalendar now model.runningEntry ]
 
     else
-        List.map (viewCalendar now) calendars
+        List.map (viewCalendar now model.runningEntry) calendars
 
 
-viewDemoCalendar : PointInTime -> Html FrontendMsg
-viewDemoCalendar now =
+viewDemoCalendar : PointInTime -> RunningEntry -> Html FrontendMsg
+viewDemoCalendar now runningEntry =
     let
         demoCalendar : HabitCalendar
         demoCalendar =
@@ -877,7 +877,7 @@ viewDemoCalendar now =
                 |> addDemoEntries now
     in
     Html.div [ Attr.class "card bg-base-100 shadow-lg p-6" ]
-        [ Calendar.viewWithTitle now demoCalendar
+        [ Calendar.viewWithTitle now runningEntry demoCalendar
         , Html.p [ Attr.class "text-sm text-base-content/50 mt-4 text-center" ]
             [ Html.text "Connect Toggl to see your real data" ]
         ]
@@ -907,8 +907,8 @@ addDemoEntries now calendar =
     HabitCalendar.setEntries entries calendar
 
 
-viewCalendar : PointInTime -> HabitCalendar -> Html FrontendMsg
-viewCalendar now calendar =
+viewCalendar : PointInTime -> RunningEntry -> HabitCalendar -> Html FrontendMsg
+viewCalendar now runningEntry calendar =
     Html.div [ Attr.class "card bg-base-100 shadow-lg p-6" ]
         [ Html.div [ Attr.class "flex justify-between items-start mb-4" ]
             [ Html.h3 [ Attr.class "text-lg font-semibold text-base-content" ]
@@ -920,7 +920,7 @@ viewCalendar now calendar =
                 ]
                 [ Html.text "🔄" ]
             ]
-        , Calendar.view now calendar
+        , Calendar.view now runningEntry calendar
         ]
 
 

@@ -27,13 +27,9 @@ import Evergreen.V4.CalendarDict
 import Evergreen.V4.HabitCalendar
 import Evergreen.V4.Toggl
 import Evergreen.V4.Types
-import Lamdera.Migrations exposing (..)
-import List
-import Maybe
-import Result
+import Lamdera.Migrations exposing (ModelMigration(..), MsgMigration(..))
 import SeqDict
 import Time
-import Toggl exposing (TogglWorkspaceId)
 
 
 frontendModel : Evergreen.V1.Types.FrontendModel -> ModelMigration Evergreen.V4.Types.FrontendModel Evergreen.V4.Types.FrontendMsg
@@ -51,8 +47,8 @@ frontendMsg old =
     MsgMigrated ( migrate_Types_FrontendMsg old, Cmd.none )
 
 
-toBackend : Evergreen.V1.Types.ToBackend -> MsgMigration Evergreen.V4.Types.ToBackend Evergreen.V4.Types.BackendMsg
-toBackend old =
+toBackend : MsgMigration Evergreen.V4.Types.ToBackend Evergreen.V4.Types.BackendMsg
+toBackend =
     MsgUnchanged
 
 

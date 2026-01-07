@@ -1,20 +1,18 @@
 module SmokeTests exposing (appTests, main)
 
 import Backend
-import CalendarDict
 import Effect.Lamdera
 import Effect.Test exposing (HttpResponse(..))
 import Effect.Time
 import Frontend
 import HabitCalendar
 import Html.Attributes
-import Json.Encode as E
 import Test exposing (describe)
 import Test.Html.Query
 import Test.Html.Selector
 import Time
 import Toggl
-import Types exposing (BackendModel, BackendMsg(..), FrontendModel, FrontendMsg(..), RunningEntry(..), ToBackend(..), ToFrontend(..))
+import Types exposing (BackendModel, BackendMsg(..), FrontendModel, FrontendMsg, ToBackend, ToFrontend)
 import Url exposing (Url)
 
 
@@ -86,18 +84,6 @@ mockCalendarInfo : Types.CalendarInfo
 mockCalendarInfo =
     { calendarId = HabitCalendar.HabitCalendarId "159657524"
     , calendarName = "Cleaning"
-    }
-
-
-mockWebhookPayload : Toggl.WebhookPayload
-mockWebhookPayload =
-    { id = Toggl.TimeEntryId 999
-    , projectId = Just (Toggl.TogglProjectId 159657524)
-    , workspaceId = Toggl.TogglWorkspaceId 12345
-    , description = Just "Cleaning"
-    , start = Time.millisToPosix (january1st2026 + (9 * 60 * 60 * 1000))
-    , stop = Nothing
-    , duration = -1
     }
 
 

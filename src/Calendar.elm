@@ -10,23 +10,24 @@ import Html exposing (Html, div, h2, text)
 import Html.Attributes exposing (attribute, class, style)
 import Time
 import Time.Extra
+import Types exposing (RunningEntry(..))
 
 
 {-| View a calendar with a title header.
 -}
-viewWithTitle : PointInTime -> HabitCalendar -> Html msg
-viewWithTitle now calendar =
+viewWithTitle : PointInTime -> RunningEntry -> HabitCalendar -> Html msg
+viewWithTitle now runningEntry calendar =
     div [ class "flex flex-col gap-2" ]
         [ h2 [ class "text-lg font-semibold text-base-content" ]
             [ text calendar.name ]
-        , view now calendar
+        , view now runningEntry calendar
         ]
 
 
 {-| View the calendar grid.
 -}
-view : PointInTime -> HabitCalendar -> Html msg
-view now calendar =
+view : PointInTime -> RunningEntry -> HabitCalendar -> Html msg
+view now runningEntry calendar =
     let
         weeks : List Int
         weeks =
@@ -34,13 +35,13 @@ view now calendar =
                 |> List.reverse
     in
     div [ class "flex flex-col gap-1" ]
-        (List.map (weekRow now calendar) weeks)
+        (List.map (weekRow now runningEntry calendar) weeks)
 
 
 {-| Render a single week row (7 days).
 -}
-weekRow : PointInTime -> HabitCalendar -> Int -> Html msg
-weekRow now calendar weeksBack =
+weekRow : PointInTime -> RunningEntry -> HabitCalendar -> Int -> Html msg
+weekRow now runningEntry calendar weeksBack =
     let
         weekStart : PointInTime
         weekStart =
@@ -58,27 +59,58 @@ weekRow now calendar weeksBack =
                                     Time.Extra.add Time.Extra.Day dayOffset now.zone weekStart.posix
                             }
                     in
-                    dayCell now calendar day
+                    dayCell now runningEntry calendar day
                 )
         )
 
 
 {-| Render a single day cell.
 -}
-dayCell : PointInTime -> HabitCalendar -> PointInTime -> Html msg
-dayCell now calendar day =
+dayCell : PointInTime -> RunningEntry -> HabitCalendar -> PointInTime -> Html msg
+dayCell now runningEntry calendar day =
     let
         dayMillis : Int
         dayMillis =
             startOfDay day
 
-        minutes : Int
-        minutes =
+        baseMinutes : Int
+        baseMinutes =
             getMinutesForDay dayMillis calendar
 
         comparison : DayComparison
         comparison =
             compareDays now day
+
+        -- Calculate additional minutes from running timer if applicable
+        runningMinutes : Int
+        runningMinutes =
+            case ( runningEntry, comparison ) of
+                ( RunningEntry payload, Today ) ->
+                    -- Check if the running timer is for this calendar's project
+                    case payload.projectId of
+                        Just projectId ->
+                            if projectId == calendar.projectId then
+                                -- Calculate duration in minutes from start to now
+                                let
+                                    durationSeconds : Int
+                                    durationSeconds =
+                                        (Time.posixToMillis now.posix - Time.posixToMillis payload.start) // 1000
+                                in
+                                durationSeconds // 60
+
+                            else
+                                0
+
+                        Nothing ->
+                            0
+
+                _ ->
+                    0
+
+        -- Total minutes including running timer
+        minutes : Int
+        minutes =
+            baseMinutes + runningMinutes
 
         ( bgColor, textColor ) =
             cellColors calendar comparison minutes
