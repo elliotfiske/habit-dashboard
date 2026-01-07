@@ -1,6 +1,9 @@
-# lamdera/program-test Documentation
+---
+name: lamdera-program-test
+description: Use when writing or debugging end-to-end tests with lamdera/program-test for Lamdera applications
+---
 
-> **Note**: This documentation is also available as a Claude Skill. When using Claude Code, you can invoke it with `/lamdera-program-test` to get assistance with writing tests.
+# lamdera/program-test Documentation
 
 This document contains learnings about using `lamdera/program-test` for end-to-end testing of Lamdera applications.
 

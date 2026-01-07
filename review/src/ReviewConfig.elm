@@ -63,6 +63,7 @@ config =
         |> Rule.ignoreErrorsForDirectories [ "tests/", "src/Evergreen/" ]
         |> Rule.ignoreErrorsForFiles ([ "src/Env.elm", "src/CalendarDict.elm", "src/HabitCalendar.elm", "src/Toggl.elm" ] ++ lamderaRpcFiles)
     , NoUnused.Parameters.rule
+        |> Rule.ignoreErrorsForDirectories [ "src/Evergreen/"]
     , NoUnused.Patterns.rule
     , NoUnused.Variables.rule
     ]
