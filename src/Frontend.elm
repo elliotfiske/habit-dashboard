@@ -285,6 +285,14 @@ updateFromBackend msg model =
         RunningEntryUpdated runningEntry ->
             ( { model | runningEntry = runningEntry }, Command.none )
 
+        StopTimerFailed errorMsg runningEntry ->
+            ( { model
+                | stopTimerError = Just errorMsg
+                , runningEntry = runningEntry
+              }
+            , Command.none
+            )
+
         WebhookDebugEvent entry ->
             -- Keep last 20 webhook events for debugging
             let
