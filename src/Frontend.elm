@@ -55,6 +55,7 @@ init _ key =
       , projectsLoading = False
       , runningEntry = NoRunningEntry
       , webhookDebugLog = []
+      , stopTimerError = Nothing
       }
     , Command.batch
         [ Effect.Task.perform GotTime Effect.Time.now

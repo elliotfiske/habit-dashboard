@@ -35,6 +35,7 @@ type alias FrontendModel =
     , projectsLoading : Bool
     , runningEntry : RunningEntry
     , webhookDebugLog : List WebhookDebugEntry -- Recent webhook events for debugging
+    , stopTimerError : Maybe String
     }
 
 

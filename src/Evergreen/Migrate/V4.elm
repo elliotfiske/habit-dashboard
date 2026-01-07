@@ -83,6 +83,7 @@ migrate_Types_FrontendModel old =
     , projectsLoading = old.projectsLoading
     , runningEntry = old.runningEntry |> migrate_Types_RunningEntry
     , webhookDebugLog = old.webhookDebugLog
+    , stopTimerError = Nothing
     }
 
 
