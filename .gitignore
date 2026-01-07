@@ -1,6 +1,9 @@
 # Elm build artifacts
 elm-stuff
 
+# Temp code in here for LLM purposes
+EXTERNAL-lamdera-program-test
+
 # Node
 node_modules
 package-lock.json
