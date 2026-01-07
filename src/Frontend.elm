@@ -235,6 +235,23 @@ update msg model =
                 ModalClosed ->
                     ( model, Command.none )
 
+        StopRunningTimer ->
+            case model.runningEntry of
+                NoRunningEntry ->
+                    ( model, Command.none )
+
+                RunningEntry payload ->
+                    ( { model
+                        | runningEntry = NoRunningEntry
+                        , stopTimerError = Nothing
+                      }
+                    , Effect.Lamdera.sendToBackend
+                        (StopTogglTimer payload.workspaceId (Toggl.timeEntryIdToInt payload.id))
+                    )
+
+        DismissStopTimerError ->
+            ( { model | stopTimerError = Nothing }, Command.none )
+
 
 updateFromBackend : ToFrontend -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
 updateFromBackend msg model =

@@ -107,6 +107,9 @@ type FrontendMsg
     | SelectProject TogglProject
     | CalendarNameChanged String
     | SubmitCreateCalendar
+      -- Stop timer actions
+    | StopRunningTimer
+    | DismissStopTimerError
 
 
 type ToBackend
