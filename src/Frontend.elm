@@ -329,7 +329,8 @@ view model =
         [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css" ] []
         , Html.div [ Attr.class "min-h-screen p-8", backgroundStyle ]
             [ Html.div [ Attr.class "max-w-4xl mx-auto" ]
-                [ runningTimerHeader model
+                [ stopTimerErrorBanner model.stopTimerError
+                , runningTimerHeader model
                 , togglConnectionCard model
                 , mainContent model
                 , webhookDebugView model
@@ -434,6 +435,31 @@ runningTimerHeader model =
                             ]
                             [ Html.text "Stop" ]
                         ]
+                    ]
+                ]
+
+
+{-| Display error banner when stopping timer fails.
+-}
+stopTimerErrorBanner : Maybe String -> Html FrontendMsg
+stopTimerErrorBanner maybeError =
+    case maybeError of
+        Nothing ->
+            Html.text ""
+
+        Just errorMsg ->
+            Html.div
+                [ Attr.class "alert alert-error mb-4"
+                , Attr.attribute "data-testid" "stop-timer-error"
+                ]
+                [ Html.div [ Attr.class "flex items-center justify-between flex-1" ]
+                    [ Html.span [] [ Html.text ("⚠ " ++ errorMsg) ]
+                    , Html.button
+                        [ Attr.class "btn btn-sm btn-ghost"
+                        , Events.onClick DismissStopTimerError
+                        , Attr.attribute "data-testid" "dismiss-error-button"
+                        ]
+                        [ Html.text "×" ]
                     ]
                 ]
 
