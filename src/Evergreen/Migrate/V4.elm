@@ -47,8 +47,8 @@ frontendMsg old =
     MsgMigrated ( migrate_Types_FrontendMsg old, Cmd.none )
 
 
-toBackend : MsgMigration Evergreen.V4.Types.ToBackend Evergreen.V4.Types.BackendMsg
-toBackend =
+toBackend : Evergreen.V1.Types.ToBackend -> MsgMigration Evergreen.V4.Types.ToBackend Evergreen.V4.Types.BackendMsg
+toBackend _ =
     MsgUnchanged
 
 
