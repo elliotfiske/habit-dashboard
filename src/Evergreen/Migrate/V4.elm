@@ -213,8 +213,8 @@ migrate_Types_BackendMsg old =
                 (p1 |> migrate_Types_CalendarInfo)
                 (p2 |> migrate_Toggl_TogglWorkspaceId)
                 (p3 |> migrate_Toggl_TogglProjectId)
-                (Unimplemented {- This new variant needs to be initialised -})
-                (Unimplemented {- This new variant needs to be initialised -})
+                Time.utc
+                (Err (Evergreen.V4.Toggl.RateLimited { secondsUntilReset = 0, message = "Oops just migrated!" }))
 
         Evergreen.V1.Types.GotWebhookValidation p0 ->
             Evergreen.V4.Types.GotWebhookValidation p0
@@ -276,13 +276,6 @@ migrate_Types_FrontendMsg old =
 
         Evergreen.V1.Types.SubmitCreateCalendar ->
             Evergreen.V4.Types.SubmitCreateCalendar
-
-        notices ->
-            {- @NOTICE `RefreshCalendar Evergreen.V4.HabitCalendar.HabitCalendarId Evergreen.V4.Toggl.TogglWorkspaceId Evergreen.V4.Toggl.TogglProjectId String` was added in V4.
-               This is just a reminder in case migrating some subset of the old data to this new value was important.
-               See https://dashboard.lamdera.app/tips/modified-custom-type for more info.
-            -}
-            (Unimplemented {- New constructors were added. I need you to resolve the above notices and then remove this case. -})
 
 
 migrate_Types_ModalState : Evergreen.V1.Types.ModalState -> Evergreen.V4.Types.ModalState
