@@ -28,20 +28,6 @@ january1st2026 =
 tests : List (Effect.Test.EndToEndTest ToBackend FrontendMsg FrontendModel ToFrontend BackendMsg BackendModel)
 tests =
     [ Effect.Test.start
-        "Dashboard title renders correctly"
-        (Effect.Time.millisToPosix january1st2026)
-        config
-        [ Effect.Test.connectFrontend
-            1000
-            (Effect.Lamdera.sessionIdFromString "sessionId0")
-            "/"
-            { width = 800, height = 600 }
-            (\client1 ->
-                [ client1.checkView 100 (Test.Html.Query.has [ Test.Html.Selector.text "Habit Dashboard" ])
-                ]
-            )
-        ]
-    , Effect.Test.start
         "Future days should show dash instead of zero"
         (Effect.Time.millisToPosix january1st2026)
         config

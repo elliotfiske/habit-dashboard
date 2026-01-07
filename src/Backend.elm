@@ -110,6 +110,7 @@ update msg model =
                 Ok workspaces ->
                     let
                         -- Fetch projects for all workspaces
+                        fetchProjectsCommands : List (Command BackendOnly ToFrontend BackendMsg)
                         fetchProjectsCommands =
                             List.map
                                 (\workspace ->
@@ -151,7 +152,7 @@ update msg model =
                         (TogglProjectsReceived (Err (Toggl.togglApiErrorToString apiError)))
                     )
 
-        GotTogglTimeEntries clientId calendarInfo userZone result ->
+        GotTogglTimeEntries clientId calendarInfo workspaceId projectId userZone result ->
             case result of
                 Ok entries ->
                     let
@@ -166,7 +167,7 @@ update msg model =
                         -- Create a calendar from the time entries using the user's timezone
                         newCalendar : HabitCalendar.HabitCalendar
                         newCalendar =
-                            HabitCalendar.fromTimeEntries calendarId calendarName userZone entries
+                            HabitCalendar.fromTimeEntries calendarId calendarName userZone workspaceId projectId entries
 
                         -- Update the calendars dict
                         updatedCalendars : CalendarDict.CalendarDict
@@ -234,5 +235,5 @@ updateFromFrontend _ clientId msg model =
                 , description = Nothing
                 , projectId = Just projectId
                 }
-                (GotTogglTimeEntries clientId calendarInfo userZone)
+                (GotTogglTimeEntries clientId calendarInfo workspaceId projectId userZone)
             )

@@ -96,6 +96,36 @@ update msg model =
             , Effect.Lamdera.sendToBackend FetchTogglWorkspaces
             )
 
+        RefreshCalendar calendarId workspaceId projectId calendarName ->
+            let
+                calendarInfo : Types.CalendarInfo
+                calendarInfo =
+                    { calendarId = calendarId
+                    , calendarName = calendarName
+                    }
+
+                -- Fetch last 28 days of entries
+                ( startDate, endDate ) =
+                    case model.currentTime of
+                        Just now ->
+                            ( Time.Extra.add Time.Extra.Day -28 Time.utc now
+                                |> formatDateForApi
+                            , formatDateForApi now
+                            )
+
+                        Nothing ->
+                            ( "2026-01-01", "2026-01-28" )
+
+                -- Use user's timezone, fallback to UTC if not available
+                userZone : Time.Zone
+                userZone =
+                    Maybe.withDefault Time.utc model.currentZone
+            in
+            ( model
+            , Effect.Lamdera.sendToBackend
+                (FetchTogglTimeEntries calendarInfo workspaceId projectId startDate endDate userZone)
+            )
+
         OpenCreateCalendarModal ->
             ( { model
                 | modalState =
@@ -361,7 +391,7 @@ runningTimerHeader model =
 
 
 {-| Determine if a hex color is dark (needs white text for readability).
-Uses relative luminance calculation: L = 0.2126_R + 0.7152_G + 0.0722\*B
+Uses relative luminance calculation: L = 0.2126\_R + 0.7152\_G + 0.0722\*B
 -}
 isColorDark : String -> Bool
 isColorDark hexColor =
@@ -594,12 +624,15 @@ muteColor hexColor =
         toHex : Int -> String
         toHex n =
             let
+                high : Int
                 high =
                     n // 16
 
+                low : Int
                 low =
                     modBy 16 n
 
+                hexDigit : Int -> String
                 hexDigit val =
                     if val < 10 then
                         String.fromInt val
@@ -819,7 +852,12 @@ viewDemoCalendar now =
     let
         demoCalendar : HabitCalendar
         demoCalendar =
-            HabitCalendar.emptyCalendar (HabitCalendarId "demo") "Example Habit"
+            HabitCalendar.emptyCalendar
+                (HabitCalendarId "demo")
+                "Example Habit"
+                now.zone
+                (Toggl.TogglWorkspaceId 0)
+                (Toggl.TogglProjectId 0)
                 |> addDemoEntries now
     in
     Html.div [ Attr.class "card bg-base-100 shadow-lg p-6" ]
@@ -856,7 +894,18 @@ addDemoEntries now calendar =
 viewCalendar : PointInTime -> HabitCalendar -> Html FrontendMsg
 viewCalendar now calendar =
     Html.div [ Attr.class "card bg-base-100 shadow-lg p-6" ]
-        [ Calendar.viewWithTitle now calendar ]
+        [ Html.div [ Attr.class "flex justify-between items-start mb-4" ]
+            [ Html.h3 [ Attr.class "text-lg font-semibold text-base-content" ]
+                [ Html.text calendar.name ]
+            , Html.button
+                [ Attr.class "btn btn-sm btn-ghost"
+                , Events.onClick (RefreshCalendar calendar.id calendar.workspaceId calendar.projectId calendar.name)
+                , Attr.title "Refresh calendar data from Toggl"
+                ]
+                [ Html.text "🔄" ]
+            ]
+        , Calendar.view now calendar
+        ]
 
 
 {-| Display webhook debug log for troubleshooting webhook events.

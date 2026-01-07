@@ -7,6 +7,8 @@ when time entries are created, updated, or deleted.
 
 -}
 
+import CalendarDict
+import HabitCalendar exposing (HabitCalendarId(..))
 import Http
 import Json.Decode as D
 import Json.Encode as E
@@ -105,10 +107,18 @@ handleTogglEvent model jsonArg =
                 newRunningEntry =
                     calculateNewRunningEntry webhookEvent model.runningEntry
 
-                -- Update model with new running entry
+                -- Update calendars based on the webhook event
+                updatedCalendars : CalendarDict.CalendarDict
+                updatedCalendars =
+                    updateCalendarsFromWebhook webhookEvent model.calendars
+
+                -- Update model with new running entry and calendars
                 updatedModel : BackendModel
                 updatedModel =
-                    { model | runningEntry = newRunningEntry }
+                    { model
+                        | runningEntry = newRunningEntry
+                        , calendars = updatedCalendars
+                    }
 
                 -- Create debug entry
                 debugEntry : WebhookDebugEntry
@@ -128,6 +138,7 @@ handleTogglEvent model jsonArg =
                 broadcastCmds =
                     Cmd.batch
                         [ Lamdera.broadcast (RunningEntryUpdated newRunningEntry)
+                        , Lamdera.broadcast (CalendarsUpdated updatedCalendars)
                         , Lamdera.broadcast (WebhookDebugEvent debugEntry)
                         ]
 
@@ -155,6 +166,66 @@ handleTogglEvent model jsonArg =
             )
 
 
+{-| Update calendars based on a webhook event.
+Finds the calendar for the time entry's project and updates it accordingly.
+-}
+updateCalendarsFromWebhook : Toggl.WebhookEvent -> CalendarDict.CalendarDict -> CalendarDict.CalendarDict
+updateCalendarsFromWebhook event calendars =
+    let
+        payload : Toggl.WebhookPayload
+        payload =
+            event.payload
+    in
+    case payload.projectId of
+        Nothing ->
+            -- No project ID, can't update any calendar
+            calendars
+
+        Just projectId ->
+            let
+                -- Calendar ID is based on project ID
+                calendarId : HabitCalendarId
+                calendarId =
+                    HabitCalendarId (Toggl.togglProjectIdToString projectId)
+
+                -- Find the calendar for this project
+                maybeCalendar : Maybe HabitCalendar.HabitCalendar
+                maybeCalendar =
+                    CalendarDict.get calendarId calendars
+            in
+            case maybeCalendar of
+                Nothing ->
+                    -- Calendar doesn't exist for this project (not created yet)
+                    calendars
+
+                Just calendar ->
+                    let
+                        action : Toggl.WebhookAction
+                        action =
+                            event.metadata.action
+
+                        -- Convert webhook payload to time entry
+                        timeEntry : Toggl.TimeEntry
+                        timeEntry =
+                            webhookPayloadToTimeEntry payload
+
+                        -- Update the calendar based on the action
+                        updatedCalendar : HabitCalendar.HabitCalendar
+                        updatedCalendar =
+                            case action of
+                                Toggl.Created ->
+                                    HabitCalendar.addOrUpdateTimeEntry timeEntry calendar
+
+                                Toggl.Updated ->
+                                    HabitCalendar.addOrUpdateTimeEntry timeEntry calendar
+
+                                Toggl.Deleted ->
+                                    HabitCalendar.deleteTimeEntry payload.id calendar
+                    in
+                    -- Insert the updated calendar back into the dict
+                    CalendarDict.insert calendarId updatedCalendar calendars
+
+
 {-| Convert webhook action to string for display.
 -}
 actionToString : Toggl.WebhookAction -> String
@@ -168,6 +239,20 @@ actionToString action =
 
         Toggl.Deleted ->
             "deleted"
+
+
+{-| Convert a webhook payload to a TimeEntry.
+WebhookPayload has extra fields (workspaceId) that TimeEntry doesn't need.
+-}
+webhookPayloadToTimeEntry : Toggl.WebhookPayload -> Toggl.TimeEntry
+webhookPayloadToTimeEntry payload =
+    { id = payload.id
+    , projectId = payload.projectId
+    , description = payload.description
+    , start = payload.start
+    , stop = payload.stop
+    , duration = payload.duration
+    }
 
 
 {-| Calculate the new running entry state based on a webhook event.

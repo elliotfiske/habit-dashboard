@@ -1,4 +1,4 @@
-module Calendar exposing (viewWithTitle)
+module Calendar exposing (view, viewWithTitle)
 
 {-| Calendar UI component for displaying habit data in a weekly grid.
 -}

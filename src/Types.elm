@@ -20,7 +20,7 @@ import Effect.Lamdera
 import HabitCalendar exposing (HabitCalendarId)
 import Http
 import Time exposing (Posix, Zone)
-import Toggl exposing (TimeEntry, TogglProject, TogglWorkspace, TogglWorkspaceId)
+import Toggl exposing (TimeEntry, TogglProject, TogglProjectId, TogglWorkspace, TogglWorkspaceId)
 import Url exposing (Url)
 
 
@@ -98,6 +98,7 @@ type FrontendMsg
     | Tick Posix -- Timer update every second
       -- Toggl actions
     | RefreshWorkspaces
+    | RefreshCalendar HabitCalendarId TogglWorkspaceId TogglProjectId String -- calendarId, workspaceId, projectId, calendarName
       -- Modal actions
     | OpenCreateCalendarModal
     | CloseModal
@@ -129,7 +130,7 @@ type BackendMsg
     | ClientDisconnected Effect.Lamdera.SessionId Effect.Lamdera.ClientId
     | GotTogglWorkspaces Effect.Lamdera.ClientId (Result Toggl.TogglApiError (List TogglWorkspace))
     | GotTogglProjects Effect.Lamdera.ClientId (Result Toggl.TogglApiError (List TogglProject))
-    | GotTogglTimeEntries Effect.Lamdera.ClientId CalendarInfo Zone (Result Toggl.TogglApiError (List TimeEntry))
+    | GotTogglTimeEntries Effect.Lamdera.ClientId CalendarInfo TogglWorkspaceId TogglProjectId Zone (Result Toggl.TogglApiError (List TimeEntry))
     | GotWebhookValidation (Result Http.Error ())
 
 

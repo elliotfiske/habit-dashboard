@@ -2,6 +2,8 @@ module HabitCalendar exposing
     ( DayEntry
     , HabitCalendar
     , HabitCalendarId(..)
+    , addOrUpdateTimeEntry
+    , deleteTimeEntry
     , emptyCalendar
     , fromTimeEntries
     , getMinutesForDay
@@ -18,9 +20,10 @@ with each day showing the total minutes tracked for a specific habit.
 
 import Color exposing (Color)
 import Dict exposing (Dict)
+import SeqDict exposing (SeqDict)
 import Time exposing (Zone)
 import Time.Extra
-import Toggl exposing (TimeEntry)
+import Toggl exposing (TimeEntry, TimeEntryId, TogglProjectId, TogglWorkspaceId)
 
 
 {-| Tagged ID type for habit calendars.
@@ -45,6 +48,10 @@ type alias HabitCalendar =
     , nonzeroColor : Color
     , weeksShowing : Int
     , entries : Dict Int DayEntry -- Keyed by day (posix millis at start of day)
+    , timeEntries : SeqDict TimeEntryId TimeEntry -- All time entries for this calendar
+    , timezone : Zone -- User's timezone for aggregating entries by day
+    , workspaceId : TogglWorkspaceId -- Toggl workspace this calendar belongs to
+    , projectId : TogglProjectId -- Toggl project this calendar tracks
     }
 
 
@@ -58,14 +65,18 @@ type alias DayEntry =
 
 {-| Create an empty calendar with default settings.
 -}
-emptyCalendar : HabitCalendarId -> String -> HabitCalendar
-emptyCalendar id name =
+emptyCalendar : HabitCalendarId -> String -> Zone -> TogglWorkspaceId -> TogglProjectId -> HabitCalendar
+emptyCalendar id name zone workspaceId projectId =
     { id = id
     , name = name
     , successColor = Color.rgb255 168 85 247 -- purple-500
     , nonzeroColor = Color.rgb255 216 180 254 -- purple-300
     , weeksShowing = 4
     , entries = Dict.empty
+    , timeEntries = SeqDict.empty
+    , timezone = zone
+    , workspaceId = workspaceId
+    , projectId = projectId
     }
 
 
@@ -89,8 +100,39 @@ setEntries entries calendar =
 {-| Create a calendar from a list of Toggl time entries.
 Aggregates entries by day, summing up durations.
 -}
-fromTimeEntries : HabitCalendarId -> String -> Zone -> List TimeEntry -> HabitCalendar
-fromTimeEntries calendarId name zone entries =
+fromTimeEntries : HabitCalendarId -> String -> Zone -> TogglWorkspaceId -> TogglProjectId -> List TimeEntry -> HabitCalendar
+fromTimeEntries calendarId name zone workspaceId projectId entries =
+    let
+        -- Store entries in a SeqDict keyed by TimeEntryId
+        entriesDict : SeqDict TimeEntryId TimeEntry
+        entriesDict =
+            List.foldl
+                (\entry acc -> SeqDict.insert entry.id entry acc)
+                SeqDict.empty
+                entries
+
+        -- Aggregate entries by day using the helper function
+        aggregatedEntries : Dict Int DayEntry
+        aggregatedEntries =
+            aggregateEntriesByDay zone (SeqDict.values entriesDict)
+    in
+    { id = calendarId
+    , name = name
+    , successColor = Color.rgb255 168 85 247 -- purple-500
+    , nonzeroColor = Color.rgb255 216 180 254 -- purple-300
+    , weeksShowing = 4
+    , entries = aggregatedEntries
+    , timeEntries = entriesDict
+    , timezone = zone
+    , workspaceId = workspaceId
+    , projectId = projectId
+    }
+
+
+{-| Helper function to aggregate time entries by day.
+-}
+aggregateEntriesByDay : Zone -> List TimeEntry -> Dict Int DayEntry
+aggregateEntriesByDay zone entries =
     let
         -- Calculate day start millis for an entry
         entryToDayMillis : TimeEntry -> Int
@@ -107,42 +149,75 @@ fromTimeEntries calendarId name zone entries =
 
             else
                 entry.duration // 60
-
-        -- Aggregate entries by day
-        aggregatedEntries : Dict Int DayEntry
-        aggregatedEntries =
-            List.foldl
-                (\entry acc ->
-                    let
-                        dayMillis : Int
-                        dayMillis =
-                            entryToDayMillis entry
-
-                        minutes : Int
-                        minutes =
-                            entryMinutes entry
-
-                        existingMinutes : Int
-                        existingMinutes =
-                            Dict.get dayMillis acc
-                                |> Maybe.map .totalMinutes
-                                |> Maybe.withDefault 0
-
-                        newEntry : DayEntry
-                        newEntry =
-                            { dayStartMillis = dayMillis
-                            , totalMinutes = existingMinutes + minutes
-                            }
-                    in
-                    Dict.insert dayMillis newEntry acc
-                )
-                Dict.empty
-                entries
     in
-    { id = calendarId
-    , name = name
-    , successColor = Color.rgb255 168 85 247 -- purple-500
-    , nonzeroColor = Color.rgb255 216 180 254 -- purple-300
-    , weeksShowing = 4
-    , entries = aggregatedEntries
+    List.foldl
+        (\entry acc ->
+            let
+                dayMillis : Int
+                dayMillis =
+                    entryToDayMillis entry
+
+                minutes : Int
+                minutes =
+                    entryMinutes entry
+
+                existingMinutes : Int
+                existingMinutes =
+                    Dict.get dayMillis acc
+                        |> Maybe.map .totalMinutes
+                        |> Maybe.withDefault 0
+
+                newEntry : DayEntry
+                newEntry =
+                    { dayStartMillis = dayMillis
+                    , totalMinutes = existingMinutes + minutes
+                    }
+            in
+            Dict.insert dayMillis newEntry acc
+        )
+        Dict.empty
+        entries
+
+
+{-| Add or update a time entry in the calendar.
+Re-aggregates all entries after updating.
+-}
+addOrUpdateTimeEntry : TimeEntry -> HabitCalendar -> HabitCalendar
+addOrUpdateTimeEntry entry calendar =
+    let
+        -- Update the timeEntries SeqDict
+        updatedTimeEntries : SeqDict TimeEntryId TimeEntry
+        updatedTimeEntries =
+            SeqDict.insert entry.id entry calendar.timeEntries
+
+        -- Re-aggregate all entries
+        updatedAggregatedEntries : Dict Int DayEntry
+        updatedAggregatedEntries =
+            aggregateEntriesByDay calendar.timezone (SeqDict.values updatedTimeEntries)
+    in
+    { calendar
+        | timeEntries = updatedTimeEntries
+        , entries = updatedAggregatedEntries
+    }
+
+
+{-| Delete a time entry from the calendar.
+Re-aggregates all entries after deletion.
+-}
+deleteTimeEntry : TimeEntryId -> HabitCalendar -> HabitCalendar
+deleteTimeEntry entryId calendar =
+    let
+        -- Remove from the timeEntries SeqDict
+        updatedTimeEntries : SeqDict TimeEntryId TimeEntry
+        updatedTimeEntries =
+            SeqDict.remove entryId calendar.timeEntries
+
+        -- Re-aggregate all entries
+        updatedAggregatedEntries : Dict Int DayEntry
+        updatedAggregatedEntries =
+            aggregateEntriesByDay calendar.timezone (SeqDict.values updatedTimeEntries)
+    in
+    { calendar
+        | timeEntries = updatedTimeEntries
+        , entries = updatedAggregatedEntries
     }
