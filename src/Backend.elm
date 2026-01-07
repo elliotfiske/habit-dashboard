@@ -2,6 +2,7 @@ module Backend exposing (BackendApp, Model, UnwrappedBackendApp, app, app_)
 
 import CalendarDict
 import Effect.Command as Command exposing (BackendOnly, Command)
+import Effect.Http
 import Effect.Lamdera exposing (ClientId, SessionId)
 import Effect.Subscription as Subscription exposing (Subscription)
 import Env
@@ -187,6 +188,47 @@ update msg model =
                         (TogglTimeEntriesReceived (Err (Toggl.togglApiErrorToString apiError)))
                     )
 
+        GotStopTimerResponse clientId result ->
+            case result of
+                Ok () ->
+                    -- Success: do nothing, webhook will sync state
+                    ( model, Command.none )
+
+                Err apiError ->
+                    -- Error: send failure message back to frontend with current running entry
+                    let
+                        errorMsg : String
+                        errorMsg =
+                            case apiError of
+                                Toggl.RateLimited _ ->
+                                    -- Let the existing rate limit handler in connection card show the error
+                                    Toggl.togglApiErrorToString apiError
+
+                                Toggl.HttpError httpError ->
+                                    case httpError of
+                                        Effect.Http.BadStatus 404 ->
+                                            "Timer not found. It may have already been stopped."
+
+                                        Effect.Http.BadStatus 401 ->
+                                            "Authentication error. Try refreshing your Toggl connection."
+
+                                        Effect.Http.BadStatus 403 ->
+                                            "Authentication error. Try refreshing your Toggl connection."
+
+                                        Effect.Http.NetworkError ->
+                                            "Network error. Check your connection and try again."
+
+                                        Effect.Http.Timeout ->
+                                            "Request timed out. Please try again."
+
+                                        _ ->
+                                            "Failed to stop timer: " ++ Toggl.togglApiErrorToString apiError
+                    in
+                    ( model
+                    , Effect.Lamdera.sendToFrontend clientId
+                        (StopTimerFailed errorMsg model.runningEntry)
+                    )
+
         GotWebhookValidation result ->
             -- Log the result but don't need to do anything else
             case result of
@@ -236,4 +278,12 @@ updateFromFrontend _ clientId msg model =
                 , projectId = Just projectId
                 }
                 (GotTogglTimeEntries clientId calendarInfo workspaceId projectId userZone)
+            )
+
+        StopTogglTimer workspaceId timeEntryId ->
+            ( model
+            , Toggl.stopTimeEntry Env.togglApiKey
+                workspaceId
+                timeEntryId
+                (GotStopTimerResponse clientId)
             )
