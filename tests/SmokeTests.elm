@@ -4,6 +4,7 @@ import Backend
 import Effect.Lamdera
 import Effect.Test exposing (HttpResponse(..))
 import Effect.Time
+import Expect
 import Frontend
 import HabitCalendar
 import Html.Attributes
@@ -329,6 +330,27 @@ tests =
                         [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "no-timer-banner") ]
                         >> Test.Html.Query.has
                             [ Test.Html.Selector.text "No timer running" ]
+                    )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Stop button not visible when no timer running"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Verify stop button does NOT exist
+                  actions.checkView 100
+                    (Test.Html.Query.findAll
+                        [ Test.Html.Selector.attribute
+                            (Html.Attributes.attribute "data-testid" "stop-timer-button")
+                        ]
+                        >> Test.Html.Query.count (Expect.equal 0)
                     )
                 ]
             )
