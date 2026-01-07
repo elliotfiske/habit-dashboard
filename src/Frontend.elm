@@ -421,11 +421,19 @@ runningTimerHeader model =
                             , Html.div [ Attr.class "text-sm opacity-80" ] [ Html.text "Currently tracking" ]
                             ]
                         ]
-                    , Html.div
-                        [ Attr.class "text-3xl font-mono font-bold"
-                        , Attr.attribute "data-testid" "running-timer-duration"
+                    , Html.div [ Attr.class "flex items-center gap-4" ]
+                        [ Html.div
+                            [ Attr.class "text-3xl font-mono font-bold"
+                            , Attr.attribute "data-testid" "running-timer-duration"
+                            ]
+                            [ Html.text timerText ]
+                        , Html.button
+                            [ Attr.class "btn btn-sm btn-ghost"
+                            , Events.onClick StopRunningTimer
+                            , Attr.attribute "data-testid" "stop-timer-button"
+                            ]
+                            [ Html.text "Stop" ]
                         ]
-                        [ Html.text timerText ]
                     ]
                 ]
 
