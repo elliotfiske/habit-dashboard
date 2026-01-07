@@ -321,7 +321,10 @@ runningTimerHeader : Model -> Html FrontendMsg
 runningTimerHeader model =
     case model.runningEntry of
         NoRunningEntry ->
-            Html.div [ Attr.class "card bg-base-200 text-base-content shadow-lg p-4 mb-6" ]
+            Html.div
+                [ Attr.class "card bg-base-200 text-base-content shadow-lg p-4 mb-6"
+                , Attr.attribute "data-testid" "no-timer-banner"
+                ]
                 [ Html.div [ Attr.class "flex items-center justify-center gap-3" ]
                     [ Html.div [ Attr.class "text-center" ]
                         [ Html.div [ Attr.class "font-semibold text-lg opacity-60" ] [ Html.text "No timer running" ]
@@ -375,16 +378,27 @@ runningTimerHeader model =
                         Nothing ->
                             ( Attr.class "bg-primary", "text-primary-content" )
             in
-            Html.div [ Attr.class ("card shadow-lg p-4 mb-6 " ++ textColorClass), bgStyle ]
+            Html.div
+                [ Attr.class ("card shadow-lg p-4 mb-6 " ++ textColorClass)
+                , bgStyle
+                , Attr.attribute "data-testid" "running-timer-banner"
+                ]
                 [ Html.div [ Attr.class "flex items-center justify-between" ]
                     [ Html.div [ Attr.class "flex items-center gap-3" ]
                         [ Html.span [ Attr.class "loading loading-ring loading-md" ] []
                         , Html.div []
-                            [ Html.div [ Attr.class "font-semibold text-lg" ] [ Html.text description ]
+                            [ Html.div
+                                [ Attr.class "font-semibold text-lg"
+                                , Attr.attribute "data-testid" "running-timer-description"
+                                ]
+                                [ Html.text description ]
                             , Html.div [ Attr.class "text-sm opacity-80" ] [ Html.text "Currently tracking" ]
                             ]
                         ]
-                    , Html.div [ Attr.class "text-3xl font-mono font-bold" ]
+                    , Html.div
+                        [ Attr.class "text-3xl font-mono font-bold"
+                        , Attr.attribute "data-testid" "running-timer-duration"
+                        ]
                         [ Html.text timerText ]
                     ]
                 ]
@@ -717,6 +731,7 @@ togglConnectionCard model =
                     , Html.button
                         [ Attr.class "btn btn-outline btn-sm"
                         , Events.onClick RefreshWorkspaces
+                        , Attr.attribute "data-testid" "connect-toggl-button"
                         ]
                         [ Html.text "Connect to Toggl" ]
                     ]
@@ -743,6 +758,7 @@ togglConnectionCard model =
                         , Html.button
                             [ Attr.class "btn btn-primary"
                             , Events.onClick OpenCreateCalendarModal
+                            , Attr.attribute "data-testid" "create-calendar-button"
                             ]
                             [ Html.text "+ New Calendar" ]
                         ]
@@ -1005,6 +1021,7 @@ viewCreateCalendarModal model modalData =
                     [ Attr.class "btn btn-primary"
                     , Attr.disabled (not (canSubmitCalendar modalData))
                     , Events.onClick SubmitCreateCalendar
+                    , Attr.attribute "data-testid" "submit-create-calendar"
                     ]
                     [ Html.text "Create" ]
                 ]
@@ -1071,6 +1088,7 @@ workspaceButton selectedWorkspace workspace =
                    )
             )
         , Events.onClick (SelectWorkspace workspace)
+        , Attr.attribute "data-testid" ("workspace-" ++ String.fromInt (Toggl.togglWorkspaceIdToInt workspace.id))
         ]
         [ Html.text workspace.name ]
 
@@ -1133,6 +1151,7 @@ projectButton selectedProject project =
                    )
             )
         , Events.onClick (SelectProject project)
+        , Attr.attribute "data-testid" ("project-" ++ Toggl.togglProjectIdToString project.id)
         ]
         [ Html.text project.name ]
 
@@ -1150,6 +1169,7 @@ viewCalendarNameInput modalData =
             , Attr.value modalData.calendarName
             , Attr.class "input input-bordered"
             , Events.onInput CalendarNameChanged
+            , Attr.attribute "data-testid" "calendar-name-input"
             ]
             []
         ]
