@@ -246,7 +246,7 @@ update msg model =
                         , stopTimerError = Nothing
                       }
                     , Effect.Lamdera.sendToBackend
-                        (StopTogglTimer payload.workspaceId (Toggl.timeEntryIdToInt payload.id))
+                        (StopTogglTimer payload.workspaceId payload.id)
                     )
 
         DismissStopTimerError ->

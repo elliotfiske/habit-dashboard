@@ -20,7 +20,7 @@ import Effect.Lamdera
 import HabitCalendar exposing (HabitCalendarId)
 import Http
 import Time exposing (Posix, Zone)
-import Toggl exposing (TimeEntry, TogglProject, TogglProjectId, TogglWorkspace, TogglWorkspaceId)
+import Toggl exposing (TimeEntry, TimeEntryId, TogglProject, TogglProjectId, TogglWorkspace, TogglWorkspaceId)
 import Url exposing (Url)
 
 
@@ -118,7 +118,7 @@ type ToBackend
     | FetchTogglWorkspaces
     | FetchTogglProjects TogglWorkspaceId
     | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId Toggl.TogglProjectId String String Zone -- calendarInfo, workspaceId, projectId, startDate, endDate, userZone
-    | StopTogglTimer TogglWorkspaceId Int
+    | StopTogglTimer TogglWorkspaceId TimeEntryId
 
 
 {-| Info needed to create a calendar from fetched time entries.

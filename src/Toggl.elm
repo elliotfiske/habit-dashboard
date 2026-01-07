@@ -18,6 +18,7 @@ module Toggl exposing
     , fetchWorkspaces
     , pingValidationDecoder
     , projectDecoder
+    , stopTimeEntry
     , timeEntriesSearchDecoder
     , timeEntryIdToInt
     , togglApiErrorToString
@@ -428,6 +429,36 @@ fetchTimeEntries apiKey workspaceId options toMsg =
         , url = url
         , body = Effect.Http.jsonBody body
         , expect = Effect.Http.expectStringResponse toMsg (handleResponse timeEntriesSearchDecoder)
+        , timeout = Just (Duration.seconds 10)
+        , tracker = Nothing
+        }
+
+
+{-| Stop a running time entry.
+PATCH https://api.track.toggl.com/api/v9/workspaces/{workspace_id}/time_entries/{time_entry_id}/stop
+-}
+stopTimeEntry :
+    ApiKey
+    -> TogglWorkspaceId
+    -> TimeEntryId
+    -> (Result TogglApiError () -> msg)
+    -> Effect.Command.Command restriction toMsg msg
+stopTimeEntry apiKey workspaceId timeEntryId toMsg =
+    let
+        url : String
+        url =
+            "https://api.track.toggl.com/api/v9/workspaces/"
+                ++ String.fromInt (togglWorkspaceIdToInt workspaceId)
+                ++ "/time_entries/"
+                ++ String.fromInt (timeEntryIdToInt timeEntryId)
+                ++ "/stop"
+    in
+    Effect.Http.request
+        { method = "PATCH"
+        , headers = [ authHeader apiKey ]
+        , url = url
+        , body = Effect.Http.emptyBody
+        , expect = Effect.Http.expectStringResponse toMsg (handleResponse (D.succeed ()))
         , timeout = Just (Duration.seconds 10)
         , tracker = Nothing
         }
