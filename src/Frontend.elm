@@ -71,6 +71,25 @@ subscriptions _ =
     Effect.Time.every (Duration.seconds 1) Tick
 
 
+{-| Helper to send FetchTogglTimeEntries command with date range and timezone.
+Consolidates logic for fetching calendar data that's used by multiple handlers.
+-}
+sendFetchCalendarCommand : Types.CalendarInfo -> Toggl.TogglWorkspaceId -> Toggl.TogglProjectId -> Model -> Command FrontendOnly ToBackend FrontendMsg
+sendFetchCalendarCommand calendarInfo workspaceId projectId model =
+    let
+        -- Fetch last 28 days of entries
+        ( startDate, endDate ) =
+            CalendarLogic.calculateDateRange model.currentTime
+
+        -- Use user's timezone, fallback to UTC if not available
+        userZone : Time.Zone
+        userZone =
+            Maybe.withDefault Time.utc model.currentZone
+    in
+    Effect.Lamdera.sendToBackend
+        (FetchTogglTimeEntries calendarInfo workspaceId projectId startDate endDate userZone)
+
+
 update : FrontendMsg -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
 update msg model =
     case msg of
@@ -105,19 +124,9 @@ update msg model =
                     { calendarId = calendarId
                     , calendarName = calendarName
                     }
-
-                -- Fetch last 28 days of entries
-                ( startDate, endDate ) =
-                    CalendarLogic.calculateDateRange model.currentTime
-
-                -- Use user's timezone, fallback to UTC if not available
-                userZone : Time.Zone
-                userZone =
-                    Maybe.withDefault Time.utc model.currentZone
             in
             ( model
-            , Effect.Lamdera.sendToBackend
-                (FetchTogglTimeEntries calendarInfo workspaceId projectId startDate endDate userZone)
+            , sendFetchCalendarCommand calendarInfo workspaceId projectId model
             )
 
         OpenCreateCalendarModal ->
@@ -199,19 +208,9 @@ update msg model =
                                     { calendarId = calendarId
                                     , calendarName = modalData.calendarName
                                     }
-
-                                -- Fetch last 28 days of entries
-                                ( startDate, endDate ) =
-                                    CalendarLogic.calculateDateRange model.currentTime
-
-                                -- Use user's timezone, fallback to UTC if not available
-                                userZone : Time.Zone
-                                userZone =
-                                    Maybe.withDefault Time.utc model.currentZone
                             in
                             ( { model | modalState = ModalClosed }
-                            , Effect.Lamdera.sendToBackend
-                                (FetchTogglTimeEntries calendarInfo workspace.id project.id startDate endDate userZone)
+                            , sendFetchCalendarCommand calendarInfo workspace.id project.id model
                             )
 
                         _ ->
