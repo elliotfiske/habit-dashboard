@@ -2,54 +2,7 @@
 
 A Lamdera application for tracking habits via Toggl time tracking integration.
 
-## Architecture
-
-This is a full-stack Elm application built with [Lamdera](https://lamdera.app), featuring a clean separation of concerns across frontend and backend.
-
-### Frontend Architecture
-
-The frontend follows The Elm Architecture (TEA) with clear module boundaries:
-
-**src/Frontend.elm** (~360 lines)
-- Main orchestration layer
-- Handles routing, initialization, and the update loop
-- Delegates to specialized modules for UI and business logic
-- Contains `init`, `update`, `updateFromBackend`, `subscriptions`, and `view`
-
-**UI Modules** (src/UI/)
-- `UI.TimerBanner` - Running timer display and stop timer error handling
-- `UI.ConnectionCard` - Toggl connection status and workspace management
-- `UI.CalendarView` - Calendar grid rendering and demo calendar
-- `UI.Modal` - Modal dialogs (create calendar, workspace/project selection)
-- `UI.WebhookDebug` - Webhook event log display (debug feature)
-
-**Business Logic Modules**
-- `ColorLogic` - Color manipulation and contrast calculations
-- `TimerLogic` - Time duration formatting and relative timer calculations
-- `CalendarLogic` - Calendar operations (date ranges, demo data)
-
-**Domain Models**
-- `Types` - Shared types for messages, models, and data structures
-- `HabitCalendar` - Calendar data structures and operations
-- `Toggl` - Toggl API types (workspaces, projects, time entries)
-
-### Backend Architecture
-
-**src/Backend.elm**
-- Handles Toggl API integration via HTTP requests
-- Manages persistent state (calendars, cached workspaces, running timer)
-- Webhook endpoint for real-time timer updates
-- Broadcasts updates to connected frontend clients
-
-### Key Design Principles
-
-1. **Separation of Concerns**: UI components don't contain business logic; logic modules are pure functions
-2. **Single Responsibility**: Each module has one clear purpose
-3. **No Duplication**: Shared logic is extracted into helper functions
-4. **Type Safety**: Extensive use of custom types and type aliases
-5. **Testability**: Pure logic modules are easy to test in isolation
-
-## Prerequisites
+## Installing
 
 Install the following tools:
 
@@ -144,8 +97,57 @@ This provides a step-by-step visualization of the test execution, which is helpf
 elm-format src/ --yes
 ```
 
-## Documentation
+## Architecture
+
+This is a full-stack Elm application built with [Lamdera](https://lamdera.app), featuring a clean separation of concerns across frontend and backend.
+
+### Frontend Architecture
+
+The frontend follows The Elm Architecture (TEA) with clear module boundaries:
+
+**src/Frontend.elm** (~360 lines)
+- Main orchestration layer
+- Handles routing, initialization, and the update loop
+- Delegates to specialized modules for UI and business logic
+- Contains `init`, `update`, `updateFromBackend`, `subscriptions`, and `view`
+
+**UI Modules** (src/UI/)
+- `UI.TimerBanner` - Running timer display and stop timer error handling
+- `UI.ConnectionCard` - Toggl connection status and workspace management
+- `UI.CalendarView` - Calendar grid rendering and demo calendar
+- `UI.Modal` - Modal dialogs (create calendar, workspace/project selection)
+- `UI.WebhookDebug` - Webhook event log display (debug feature)
+
+**Business Logic Modules**
+- `ColorLogic` - Color manipulation and contrast calculations
+- `TimerLogic` - Time duration formatting and relative timer calculations
+- `CalendarLogic` - Calendar operations (date ranges, demo data)
+
+**Domain Models**
+- `Types` - Shared types for messages, models, and data structures
+- `HabitCalendar` - Calendar data structures and operations
+- `Toggl` - Toggl API types (workspaces, projects, time entries)
+
+### Backend Architecture
+
+**src/Backend.elm**
+- Handles Toggl API integration via HTTP requests
+- Manages persistent state (calendars, cached workspaces, running timer)
+- Webhook endpoint for real-time timer updates
+- Broadcasts updates to connected frontend clients
+
+### Key Design Principles
+
+1. **Separation of Concerns**: UI components don't contain business logic; logic modules are pure functions
+2. **Single Responsibility**: Each module has one clear purpose
+3. **No Duplication**: Shared logic is extracted into helper functions
+4. **Type Safety**: Extensive use of custom types and type aliases
+5. **Testability**: Pure logic modules are easy to test in isolation
+
+# Lamdera Documentation
 
 - [Lamdera Docs](https://dashboard.lamdera.app/docs)
 - [Lamdera REPL Docs](https://dashboard.lamdera.app/docs/repl)
+
+
 
