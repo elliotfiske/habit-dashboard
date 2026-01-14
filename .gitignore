@@ -1,6 +1,9 @@
 # Elm build artifacts
 elm-stuff
 
+# Environment config with secrets (API keys)
+src/Env.elm
+
 # Temp code in here for LLM purposes
 EXTERNAL-lamdera-program-test
 

@@ -87,6 +87,7 @@ type alias BackendModel =
     , togglWorkspaces : List TogglWorkspace
     , togglProjects : List TogglProject
     , runningEntry : RunningEntry
+    , webhookEvents : List WebhookDebugEntry -- Store all webhook events for debugging
     }
 
 
@@ -110,6 +111,8 @@ type FrontendMsg
       -- Stop timer actions
     | StopRunningTimer
     | DismissStopTimerError
+      -- Webhook debug actions
+    | ClearWebhookEvents
 
 
 type ToBackend
@@ -119,6 +122,7 @@ type ToBackend
     | FetchTogglProjects TogglWorkspaceId
     | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId Toggl.TogglProjectId String String Zone -- calendarInfo, workspaceId, projectId, startDate, endDate, userZone
     | StopTogglTimer TogglWorkspaceId TimeEntryId
+    | ClearWebhookEventsRequest
 
 
 {-| Info needed to create a calendar from fetched time entries.
@@ -148,4 +152,5 @@ type ToFrontend
     | TogglTimeEntriesReceived (Result String (List TimeEntry))
     | RunningEntryUpdated RunningEntry
     | WebhookDebugEvent WebhookDebugEntry
+    | WebhookEventsCleared
     | StopTimerFailed String RunningEntry

@@ -67,6 +67,7 @@ init =
       , togglWorkspaces = []
       , togglProjects = []
       , runningEntry = Types.NoRunningEntry
+      , webhookEvents = []
       }
     , Command.none
     )
@@ -98,9 +99,16 @@ update msg model =
                 runningEntryCmd : Command BackendOnly ToFrontend BackendMsg
                 runningEntryCmd =
                     Effect.Lamdera.sendToFrontend clientId (RunningEntryUpdated model.runningEntry)
+
+                -- Send all stored webhook events for debugging
+                webhookEventsCmds : List (Command BackendOnly ToFrontend BackendMsg)
+                webhookEventsCmds =
+                    List.map
+                        (\event -> Effect.Lamdera.sendToFrontend clientId (WebhookDebugEvent event))
+                        (List.reverse model.webhookEvents) -- Reverse to send oldest first
             in
             ( model
-            , Command.batch [ calendarsCmd, workspacesCmd, runningEntryCmd ]
+            , Command.batch (calendarsCmd :: workspacesCmd :: runningEntryCmd :: webhookEventsCmds)
             )
 
         ClientDisconnected _ _ ->
@@ -286,4 +294,9 @@ updateFromFrontend _ clientId msg model =
                 workspaceId
                 timeEntryId
                 (GotStopTimerResponse clientId)
+            )
+
+        ClearWebhookEventsRequest ->
+            ( { model | webhookEvents = [] }
+            , Effect.Lamdera.broadcast WebhookEventsCleared
             )

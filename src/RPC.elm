@@ -58,12 +58,16 @@ handleTogglWebhook _ model jsonArg =
                     , rawJson = E.encode 2 jsonArg
                     }
 
+                updatedModel : BackendModel
+                updatedModel =
+                    { model | webhookEvents = debugEntry :: model.webhookEvents }
+
                 debugCmd : Cmd BackendMsg
                 debugCmd =
                     Lamdera.broadcast (WebhookDebugEvent debugEntry)
             in
             ( Ok (E.object [ ( "status", E.string "ok" ) ])
-            , model
+            , updatedModel
             , debugCmd
             )
 
@@ -81,12 +85,16 @@ handleTogglWebhook _ model jsonArg =
                             , rawJson = E.encode 2 jsonArg
                             }
 
+                        updatedModel : BackendModel
+                        updatedModel =
+                            { model | webhookEvents = debugEntry :: model.webhookEvents }
+
                         debugCmd : Cmd BackendMsg
                         debugCmd =
                             Lamdera.broadcast (WebhookDebugEvent debugEntry)
                     in
                     ( Ok (Toggl.encodeValidationResponse validationCode)
-                    , model
+                    , updatedModel
                     , debugCmd
                     )
 
@@ -112,14 +120,6 @@ handleTogglEvent model jsonArg =
                 updatedCalendars =
                     updateCalendarsFromWebhook webhookEvent model.calendars
 
-                -- Update model with new running entry and calendars
-                updatedModel : BackendModel
-                updatedModel =
-                    { model
-                        | runningEntry = newRunningEntry
-                        , calendars = updatedCalendars
-                    }
-
                 -- Create debug entry
                 debugEntry : WebhookDebugEntry
                 debugEntry =
@@ -131,6 +131,15 @@ handleTogglEvent model jsonArg =
                             ++ ", Description: "
                             ++ Maybe.withDefault "(none)" webhookEvent.payload.description
                     , rawJson = E.encode 2 jsonArg
+                    }
+
+                -- Update model with new running entry, calendars, and webhook event
+                updatedModel : BackendModel
+                updatedModel =
+                    { model
+                        | runningEntry = newRunningEntry
+                        , calendars = updatedCalendars
+                        , webhookEvents = debugEntry :: model.webhookEvents
                     }
 
                 -- Broadcast commands
@@ -159,9 +168,13 @@ handleTogglEvent model jsonArg =
                     , description = "Failed to decode: " ++ D.errorToString decodeError
                     , rawJson = E.encode 2 jsonArg
                     }
+
+                updatedModel : BackendModel
+                updatedModel =
+                    { model | webhookEvents = debugEntry :: model.webhookEvents }
             in
             ( Err (Http.BadBody ("Failed to decode webhook event: " ++ D.errorToString decodeError))
-            , model
+            , updatedModel
             , Lamdera.broadcast (WebhookDebugEvent debugEntry)
             )
 

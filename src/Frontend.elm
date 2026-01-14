@@ -236,6 +236,11 @@ update msg model =
         DismissStopTimerError ->
             ( { model | stopTimerError = Nothing }, Command.none )
 
+        ClearWebhookEvents ->
+            ( model
+            , Effect.Lamdera.sendToBackend ClearWebhookEventsRequest
+            )
+
 
 updateFromBackend : ToFrontend -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
 updateFromBackend msg model =
@@ -286,6 +291,10 @@ updateFromBackend msg model =
                         |> List.take 20
             in
             ( { model | webhookDebugLog = updatedLog }, Command.none )
+
+        WebhookEventsCleared ->
+            -- Clear webhook debug log
+            ( { model | webhookDebugLog = [] }, Command.none )
 
 
 view : Model -> Effect.Browser.Document FrontendMsg

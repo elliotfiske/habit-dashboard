@@ -8,7 +8,8 @@ This module provides UI components for displaying webhook debug information.
 
 import Html exposing (Html)
 import Html.Attributes as Attr
-import Types exposing (FrontendModel, FrontendMsg, WebhookDebugEntry)
+import Html.Events as Events
+import Types exposing (FrontendModel, FrontendMsg(..), WebhookDebugEntry)
 
 
 {-| Display webhook debug log for troubleshooting webhook events.
@@ -24,10 +25,17 @@ view model =
         Html.div [ Attr.class "mt-8" ]
             [ Html.div [ Attr.class "card bg-base-100 shadow-lg" ]
                 [ Html.div [ Attr.class "card-body" ]
-                    [ Html.h2 [ Attr.class "card-title text-base-content" ]
-                        [ Html.text "Webhook Debug Log"
-                        , Html.span [ Attr.class "badge badge-info" ]
-                            [ Html.text (String.fromInt (List.length model.webhookDebugLog)) ]
+                    [ Html.div [ Attr.class "flex justify-between items-center mb-4" ]
+                        [ Html.h2 [ Attr.class "card-title text-base-content" ]
+                            [ Html.text "Webhook Debug Log"
+                            , Html.span [ Attr.class "badge badge-info" ]
+                                [ Html.text (String.fromInt (List.length model.webhookDebugLog)) ]
+                            ]
+                        , Html.button
+                            [ Attr.class "btn btn-sm btn-error"
+                            , Events.onClick ClearWebhookEvents
+                            ]
+                            [ Html.text "Clear Log" ]
                         ]
                     , Html.div [ Attr.class "space-y-2 max-h-96 overflow-y-auto" ]
                         (List.map viewEntry model.webhookDebugLog)
