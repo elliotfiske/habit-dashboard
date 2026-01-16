@@ -177,6 +177,10 @@ update msg model =
                     , Command.none
                     )
 
+                ModalEditCalendar _ ->
+                    -- TODO: Handle project selection in edit modal
+                    ( model, Command.none )
+
                 ModalClosed ->
                     ( model, Command.none )
 
@@ -189,6 +193,10 @@ update msg model =
                       }
                     , Command.none
                     )
+
+                ModalEditCalendar _ ->
+                    -- TODO: Handle name change in edit modal
+                    ( model, Command.none )
 
                 ModalClosed ->
                     ( model, Command.none )
@@ -215,6 +223,10 @@ update msg model =
 
                         _ ->
                             ( model, Command.none )
+
+                ModalEditCalendar _ ->
+                    -- SubmitCreateCalendar shouldn't be called from edit modal
+                    ( model, Command.none )
 
                 ModalClosed ->
                     ( model, Command.none )

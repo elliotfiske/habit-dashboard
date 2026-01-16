@@ -3,6 +3,7 @@ module Types exposing
     , BackendMsg(..)
     , CalendarInfo
     , CreateCalendarModal
+    , EditCalendarModal
     , FrontendModel
     , FrontendMsg(..)
     , ModalState(..)
@@ -54,6 +55,7 @@ type alias WebhookDebugEntry =
 type ModalState
     = ModalClosed
     | ModalCreateCalendar CreateCalendarModal
+    | ModalEditCalendar EditCalendarModal
 
 
 {-| State for the "Create Calendar" modal.
@@ -61,6 +63,17 @@ type ModalState
 type alias CreateCalendarModal =
     { selectedWorkspace : Maybe TogglWorkspace
     , selectedProject : Maybe TogglProject
+    , calendarName : String
+    }
+
+
+{-| State for the "Edit Calendar" modal.
+-}
+type alias EditCalendarModal =
+    { calendarId : HabitCalendar.HabitCalendarId
+    , originalProjectId : Toggl.TogglProjectId -- To detect if project changed
+    , selectedWorkspace : Toggl.TogglWorkspace
+    , selectedProject : Toggl.TogglProject
     , calendarName : String
     }
 

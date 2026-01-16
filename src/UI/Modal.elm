@@ -27,6 +27,10 @@ view model =
         ModalCreateCalendar modalData ->
             viewCreateCalendar model modalData
 
+        ModalEditCalendar _ ->
+            -- TODO: Implement edit calendar modal view
+            Html.text ""
+
 
 {-| View the "Create Calendar" modal.
 Shows workspace selector, project selector, calendar name input, and action buttons.
