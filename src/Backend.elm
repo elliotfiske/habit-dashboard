@@ -309,3 +309,11 @@ updateFromFrontend _ clientId msg model =
             ( { model | webhookEvents = [] }
             , Effect.Lamdera.broadcast WebhookEventsCleared
             )
+
+        UpdateCalendar _ _ _ _ ->
+            -- TODO: Implement in Task 7
+            ( model, Command.none )
+
+        DeleteCalendarRequest _ ->
+            -- TODO: Implement in Task 7
+            ( model, Command.none )

@@ -143,6 +143,8 @@ type ToBackend
     | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId Toggl.TogglProjectId String String Zone -- calendarInfo, workspaceId, projectId, startDate, endDate, userZone
     | StopTogglTimer TogglWorkspaceId TimeEntryId
     | ClearWebhookEventsRequest
+    | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId -- calendarId, name, workspaceId, projectId
+    | DeleteCalendarRequest HabitCalendar.HabitCalendarId
 
 
 {-| Info needed to create a calendar from fetched time entries.
