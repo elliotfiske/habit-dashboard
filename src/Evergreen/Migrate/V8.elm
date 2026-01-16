@@ -27,9 +27,7 @@ import Evergreen.V8.CalendarDict
 import Evergreen.V8.HabitCalendar
 import Evergreen.V8.Toggl
 import Evergreen.V8.Types
-import Lamdera.Migrations exposing (..)
-import List
-import Maybe
+import Lamdera.Migrations exposing (ModelMigration(..), MsgMigration(..))
 import SeqDict
 
 

@@ -95,6 +95,15 @@ update msg model =
                     else
                         Effect.Lamdera.sendToFrontend clientId (TogglWorkspacesReceived (Ok model.togglWorkspaces))
 
+                -- Send cached projects so frontend can display colors immediately
+                projectsCmd : Command BackendOnly ToFrontend BackendMsg
+                projectsCmd =
+                    if List.isEmpty model.togglProjects then
+                        Command.none
+
+                    else
+                        Effect.Lamdera.sendToFrontend clientId (TogglProjectsReceived (Ok model.togglProjects))
+
                 -- Send current running entry
                 runningEntryCmd : Command BackendOnly ToFrontend BackendMsg
                 runningEntryCmd =
@@ -108,7 +117,7 @@ update msg model =
                         (List.reverse model.webhookEvents) -- Reverse to send oldest first
             in
             ( model
-            , Command.batch (calendarsCmd :: workspacesCmd :: runningEntryCmd :: webhookEventsCmds)
+            , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: webhookEventsCmds)
             )
 
         ClientDisconnected _ _ ->
