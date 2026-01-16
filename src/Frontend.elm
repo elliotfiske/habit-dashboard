@@ -253,6 +253,25 @@ update msg model =
             , Effect.Lamdera.sendToBackend ClearWebhookEventsRequest
             )
 
+        -- Edit calendar actions (handlers to be implemented in Task 6)
+        OpenEditCalendarModal _ ->
+            ( model, Command.none )
+
+        EditCalendarSelectWorkspace _ ->
+            ( model, Command.none )
+
+        EditCalendarSelectProject _ ->
+            ( model, Command.none )
+
+        EditCalendarNameChanged _ ->
+            ( model, Command.none )
+
+        SubmitEditCalendar ->
+            ( model, Command.none )
+
+        DeleteCalendar _ ->
+            ( model, Command.none )
+
 
 updateFromBackend : ToFrontend -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
 updateFromBackend msg model =

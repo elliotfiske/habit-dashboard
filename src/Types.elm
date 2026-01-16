@@ -121,6 +121,13 @@ type FrontendMsg
     | SelectProject TogglProject
     | CalendarNameChanged String
     | SubmitCreateCalendar
+      -- Edit calendar actions
+    | OpenEditCalendarModal HabitCalendar.HabitCalendar
+    | EditCalendarSelectWorkspace Toggl.TogglWorkspace
+    | EditCalendarSelectProject Toggl.TogglProject
+    | EditCalendarNameChanged String
+    | SubmitEditCalendar
+    | DeleteCalendar HabitCalendar.HabitCalendarId
       -- Stop timer actions
     | StopRunningTimer
     | DismissStopTimerError
