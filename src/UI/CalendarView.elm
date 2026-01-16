@@ -79,7 +79,7 @@ viewDemoCalendar now runningEntry =
         ]
 
 
-{-| Display individual calendar card with refresh button.
+{-| Display individual calendar card with action buttons.
 -}
 viewCalendar : PointInTime -> RunningEntry -> HabitCalendar -> Html FrontendMsg
 viewCalendar now runningEntry calendar =
@@ -87,12 +87,29 @@ viewCalendar now runningEntry calendar =
         [ Html.div [ Attr.class "flex justify-between items-start mb-4" ]
             [ Html.h3 [ Attr.class "text-lg font-semibold text-base-content" ]
                 [ Html.text calendar.name ]
-            , Html.button
-                [ Attr.class "btn btn-sm btn-ghost"
-                , Events.onClick (RefreshCalendar calendar.id calendar.workspaceId calendar.projectId calendar.name)
-                , Attr.title "Refresh calendar data from Toggl"
+            , Html.div [ Attr.class "flex gap-1" ]
+                [ Html.button
+                    [ Attr.class "btn btn-sm btn-ghost"
+                    , Events.onClick (RefreshCalendar calendar.id calendar.workspaceId calendar.projectId calendar.name)
+                    , Attr.title "Refresh calendar data from Toggl"
+                    , Attr.attribute "data-testid" ("refresh-calendar-" ++ HabitCalendar.habitCalendarIdToString calendar.id)
+                    ]
+                    [ Html.text "🔄" ]
+                , Html.button
+                    [ Attr.class "btn btn-sm btn-ghost"
+                    , Events.onClick (OpenEditCalendarModal calendar)
+                    , Attr.title "Edit calendar"
+                    , Attr.attribute "data-testid" ("edit-calendar-" ++ HabitCalendar.habitCalendarIdToString calendar.id)
+                    ]
+                    [ Html.text "✏️" ]
+                , Html.button
+                    [ Attr.class "btn btn-sm btn-ghost text-error"
+                    , Events.onClick (DeleteCalendar calendar.id)
+                    , Attr.title "Delete calendar"
+                    , Attr.attribute "data-testid" ("delete-calendar-" ++ HabitCalendar.habitCalendarIdToString calendar.id)
+                    ]
+                    [ Html.text "🗑️" ]
                 ]
-                [ Html.text "🔄" ]
             ]
         , Calendar.view now runningEntry calendar
         ]
