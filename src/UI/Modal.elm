@@ -12,7 +12,7 @@ import Html exposing (Html)
 import Html.Attributes as Attr
 import Html.Events as Events
 import Toggl exposing (TogglProject, TogglWorkspace)
-import Types exposing (CreateCalendarModal, FrontendModel, FrontendMsg(..), ModalState(..), TogglConnectionStatus(..))
+import Types exposing (CreateCalendarModal, EditCalendarModal, FrontendModel, FrontendMsg(..), ModalState(..), TogglConnectionStatus(..))
 
 
 {-| View the modal overlay if a modal is open.
@@ -27,9 +27,8 @@ view model =
         ModalCreateCalendar modalData ->
             viewCreateCalendar model modalData
 
-        ModalEditCalendar _ ->
-            -- TODO: Implement edit calendar modal view
-            Html.text ""
+        ModalEditCalendar modalData ->
+            viewEditCalendar model modalData
 
 
 {-| View the "Create Calendar" modal.
@@ -215,6 +214,157 @@ viewCalendarNameInput modalData =
             , Attr.class "input input-bordered"
             , Events.onInput CalendarNameChanged
             , Attr.attribute "data-testid" "calendar-name-input"
+            ]
+            []
+        ]
+
+
+{-| View the "Edit Calendar" modal.
+Pre-populated with current calendar values.
+-}
+viewEditCalendar : FrontendModel -> EditCalendarModal -> Html FrontendMsg
+viewEditCalendar model modalData =
+    Html.div [ Attr.class "fixed inset-0 z-50 flex items-center justify-center" ]
+        [ -- Backdrop
+          Html.div
+            [ Attr.class "absolute inset-0 bg-black/50"
+            , Events.onClick CloseModal
+            ]
+            []
+        , -- Modal box
+          Html.div [ Attr.class "relative z-10 bg-base-100 rounded-lg shadow-xl p-6 max-w-md w-full mx-4" ]
+            [ Html.h3 [ Attr.class "font-bold text-lg mb-4" ]
+                [ Html.text "Edit Calendar" ]
+            , viewEditWorkspaceSelector model modalData
+            , viewEditProjectSelector model modalData
+            , viewEditCalendarNameInput modalData
+            , Html.div [ Attr.class "flex justify-end gap-2 mt-6" ]
+                [ Html.button
+                    [ Attr.class "btn"
+                    , Events.onClick CloseModal
+                    ]
+                    [ Html.text "Cancel" ]
+                , Html.button
+                    [ Attr.class "btn btn-primary"
+                    , Attr.disabled (String.isEmpty modalData.calendarName)
+                    , Events.onClick SubmitEditCalendar
+                    , Attr.attribute "data-testid" "submit-edit-calendar"
+                    ]
+                    [ Html.text "Save" ]
+                ]
+            ]
+        ]
+
+
+{-| View workspace selector for edit modal (shows currently selected).
+-}
+viewEditWorkspaceSelector : FrontendModel -> EditCalendarModal -> Html FrontendMsg
+viewEditWorkspaceSelector model modalData =
+    let
+        workspaces : List TogglWorkspace
+        workspaces =
+            case model.togglStatus of
+                Connected ws ->
+                    ws
+
+                _ ->
+                    []
+    in
+    Html.div [ Attr.class "form-control mb-4" ]
+        [ Html.label [ Attr.class "label" ]
+            [ Html.span [ Attr.class "label-text" ] [ Html.text "Workspace" ] ]
+        , Html.div [ Attr.class "flex flex-wrap gap-2" ]
+            (List.map (editWorkspaceButton modalData.selectedWorkspace) workspaces)
+        ]
+
+
+{-| Button for selecting a workspace in edit modal.
+-}
+editWorkspaceButton : TogglWorkspace -> TogglWorkspace -> Html FrontendMsg
+editWorkspaceButton selectedWorkspace workspace =
+    let
+        isSelected : Bool
+        isSelected =
+            selectedWorkspace.id == workspace.id
+    in
+    Html.button
+        [ Attr.class
+            ("btn btn-sm "
+                ++ (if isSelected then
+                        "btn-primary"
+
+                    else
+                        "btn-outline"
+                   )
+            )
+        , Events.onClick (EditCalendarSelectWorkspace workspace)
+        , Attr.attribute "data-testid" ("edit-workspace-" ++ String.fromInt (Toggl.togglWorkspaceIdToInt workspace.id))
+        ]
+        [ Html.text workspace.name ]
+
+
+{-| View project selector for edit modal.
+-}
+viewEditProjectSelector : FrontendModel -> EditCalendarModal -> Html FrontendMsg
+viewEditProjectSelector model modalData =
+    Html.div [ Attr.class "form-control mb-4" ]
+        [ Html.label [ Attr.class "label" ]
+            [ Html.span [ Attr.class "label-text" ] [ Html.text "Project" ] ]
+        , if model.projectsLoading then
+            Html.div [ Attr.class "flex items-center gap-2" ]
+                [ Html.span [ Attr.class "loading loading-spinner loading-sm" ] []
+                , Html.text "Loading projects..."
+                ]
+
+          else if List.isEmpty model.availableProjects then
+            Html.p [ Attr.class "text-sm text-base-content/60" ]
+                [ Html.text "No projects found" ]
+
+          else
+            Html.div [ Attr.class "flex flex-wrap gap-2 max-h-48 overflow-y-auto" ]
+                (List.map (editProjectButton modalData.selectedProject) model.availableProjects)
+        ]
+
+
+{-| Button for selecting a project in edit modal.
+-}
+editProjectButton : TogglProject -> TogglProject -> Html FrontendMsg
+editProjectButton selectedProject project =
+    let
+        isSelected : Bool
+        isSelected =
+            selectedProject.id == project.id
+    in
+    Html.button
+        [ Attr.class
+            ("btn btn-sm "
+                ++ (if isSelected then
+                        "btn-primary"
+
+                    else
+                        "btn-outline"
+                   )
+            )
+        , Events.onClick (EditCalendarSelectProject project)
+        , Attr.attribute "data-testid" ("edit-project-" ++ Toggl.togglProjectIdToString project.id)
+        ]
+        [ Html.text project.name ]
+
+
+{-| View calendar name input for edit modal.
+-}
+viewEditCalendarNameInput : EditCalendarModal -> Html FrontendMsg
+viewEditCalendarNameInput modalData =
+    Html.div [ Attr.class "form-control mb-4" ]
+        [ Html.label [ Attr.class "label" ]
+            [ Html.span [ Attr.class "label-text" ] [ Html.text "Calendar Name" ] ]
+        , Html.input
+            [ Attr.type_ "text"
+            , Attr.placeholder "Enter a name for this calendar"
+            , Attr.value modalData.calendarName
+            , Attr.class "input input-bordered"
+            , Events.onInput EditCalendarNameChanged
+            , Attr.attribute "data-testid" "edit-calendar-name-input"
             ]
             []
         ]
