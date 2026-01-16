@@ -1,6 +1,7 @@
 module Backend exposing (BackendApp, Model, UnwrappedBackendApp, app, app_)
 
 import CalendarDict
+import Dict
 import Effect.Command as Command exposing (BackendOnly, Command)
 import Effect.Http
 import Effect.Lamdera exposing (ClientId, SessionId)
@@ -8,6 +9,7 @@ import Effect.Subscription as Subscription exposing (Subscription)
 import Env
 import HabitCalendar exposing (HabitCalendarId)
 import Lamdera as L
+import SeqDict
 import Toggl
 import Types exposing (BackendModel, BackendMsg(..), ToBackend(..), ToFrontend(..))
 
@@ -310,10 +312,52 @@ updateFromFrontend _ clientId msg model =
             , Effect.Lamdera.broadcast WebhookEventsCleared
             )
 
-        UpdateCalendar _ _ _ _ ->
-            -- TODO: Implement in Task 7
-            ( model, Command.none )
+        UpdateCalendar calendarId newName newWorkspaceId newProjectId ->
+            case CalendarDict.get calendarId model.calendars of
+                Just existingCalendar ->
+                    let
+                        projectChanged : Bool
+                        projectChanged =
+                            existingCalendar.projectId /= newProjectId
 
-        DeleteCalendarRequest _ ->
-            -- TODO: Implement in Task 7
-            ( model, Command.none )
+                        -- Update calendar with new name (and project info)
+                        updatedCalendar : HabitCalendar.HabitCalendar
+                        updatedCalendar =
+                            { existingCalendar
+                                | name = newName
+                                , workspaceId = newWorkspaceId
+                                , projectId = newProjectId
+                            }
+
+                        -- If project changed, clear entries (will re-fetch)
+                        calendarToSave : HabitCalendar.HabitCalendar
+                        calendarToSave =
+                            if projectChanged then
+                                { updatedCalendar
+                                    | entries = Dict.empty
+                                    , timeEntries = SeqDict.empty
+                                }
+
+                            else
+                                updatedCalendar
+
+                        updatedCalendars : CalendarDict.CalendarDict
+                        updatedCalendars =
+                            CalendarDict.insert calendarId calendarToSave model.calendars
+                    in
+                    ( { model | calendars = updatedCalendars }
+                    , Effect.Lamdera.broadcast (CalendarsUpdated updatedCalendars)
+                    )
+
+                Nothing ->
+                    ( model, Command.none )
+
+        DeleteCalendarRequest calendarId ->
+            let
+                updatedCalendars : CalendarDict.CalendarDict
+                updatedCalendars =
+                    CalendarDict.remove calendarId model.calendars
+            in
+            ( { model | calendars = updatedCalendars }
+            , Effect.Lamdera.broadcast (CalendarsUpdated updatedCalendars)
+            )
