@@ -253,24 +253,109 @@ update msg model =
             , Effect.Lamdera.sendToBackend ClearWebhookEventsRequest
             )
 
-        -- Edit calendar actions (handlers to be implemented in Task 6)
-        OpenEditCalendarModal _ ->
-            ( model, Command.none )
+        -- Edit calendar actions
+        OpenEditCalendarModal calendar ->
+            let
+                -- Find the workspace for this calendar
+                maybeWorkspace : Maybe Toggl.TogglWorkspace
+                maybeWorkspace =
+                    case model.togglStatus of
+                        Connected workspaces ->
+                            List.filter (\ws -> ws.id == calendar.workspaceId) workspaces
+                                |> List.head
 
-        EditCalendarSelectWorkspace _ ->
-            ( model, Command.none )
+                        _ ->
+                            Nothing
 
-        EditCalendarSelectProject _ ->
-            ( model, Command.none )
+                -- Find the project for this calendar
+                maybeProject : Maybe Toggl.TogglProject
+                maybeProject =
+                    List.filter (\p -> p.id == calendar.projectId) model.availableProjects
+                        |> List.head
+            in
+            case ( maybeWorkspace, maybeProject ) of
+                ( Just workspace, Just project ) ->
+                    ( { model
+                        | modalState =
+                            ModalEditCalendar
+                                { calendarId = calendar.id
+                                , originalProjectId = calendar.projectId
+                                , selectedWorkspace = workspace
+                                , selectedProject = project
+                                , calendarName = calendar.name
+                                }
+                      }
+                    , Command.none
+                    )
 
-        EditCalendarNameChanged _ ->
-            ( model, Command.none )
+                _ ->
+                    -- Can't edit if we don't have workspace/project info
+                    ( model, Command.none )
+
+        EditCalendarSelectWorkspace workspace ->
+            case model.modalState of
+                ModalEditCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalEditCalendar
+                                { modalData | selectedWorkspace = workspace }
+                        , projectsLoading = True
+                      }
+                    , Effect.Lamdera.sendToBackend (FetchTogglProjects workspace.id)
+                    )
+
+                _ ->
+                    ( model, Command.none )
+
+        EditCalendarSelectProject project ->
+            case model.modalState of
+                ModalEditCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalEditCalendar
+                                { modalData | selectedProject = project }
+                      }
+                    , Command.none
+                    )
+
+                _ ->
+                    ( model, Command.none )
+
+        EditCalendarNameChanged newName ->
+            case model.modalState of
+                ModalEditCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalEditCalendar { modalData | calendarName = newName }
+                      }
+                    , Command.none
+                    )
+
+                _ ->
+                    ( model, Command.none )
 
         SubmitEditCalendar ->
-            ( model, Command.none )
+            case model.modalState of
+                ModalEditCalendar modalData ->
+                    ( { model | modalState = ModalClosed }
+                    , Effect.Lamdera.sendToBackend
+                        (UpdateCalendar
+                            modalData.calendarId
+                            modalData.calendarName
+                            modalData.selectedWorkspace.id
+                            modalData.selectedProject.id
+                        )
+                    )
 
-        DeleteCalendar _ ->
-            ( model, Command.none )
+                _ ->
+                    ( model, Command.none )
+
+        DeleteCalendar calendarId ->
+            -- Note: In production, we'd use a port for window.confirm()
+            -- For now, just send the delete request directly
+            ( model
+            , Effect.Lamdera.sendToBackend (DeleteCalendarRequest calendarId)
+            )
 
 
 updateFromBackend : ToFrontend -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
