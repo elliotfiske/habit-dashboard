@@ -1,6 +1,7 @@
 module SmokeTests exposing (appTests, main)
 
 import Backend
+import Color
 import Dict
 import Effect.Browser.Dom as Dom
 import Effect.Http
@@ -89,6 +90,22 @@ mockCalendarInfo : Types.CalendarInfo
 mockCalendarInfo =
     { calendarId = HabitCalendar.HabitCalendarId "159657524"
     , calendarName = "Cleaning"
+    , successColor = Color.rgb255 168 85 247
+    , nonzeroColor = Color.rgb255 216 180 254
+    }
+
+
+{-| Mock running timer webhook payload.
+-}
+mockRunningEntry : Toggl.WebhookPayload
+mockRunningEntry =
+    { id = Toggl.TimeEntryId 888
+    , projectId = Just (Toggl.TogglProjectId 159657524)
+    , workspaceId = Toggl.TogglWorkspaceId 12345
+    , description = Just "Working on tests"
+    , start = Time.millisToPosix january1st2026
+    , stop = Nothing
+    , duration = -1 -- Running entries have duration -1
     }
 
 
@@ -632,6 +649,289 @@ tests =
                 , actions.checkView 100
                     (Test.Html.Query.has
                         [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "create-calendar-button") ]
+                    )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Running timer shows description and stop button"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Broadcast running entry to all frontends
+                  Effect.Test.backendUpdate 100
+                    (BroadcastRunningEntry (Types.RunningEntry mockRunningEntry))
+                , -- Verify running timer banner appears with description
+                  actions.checkView 200
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "running-timer-banner") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.text "Working on tests" ]
+                    )
+                , -- Verify stop button is visible
+                  actions.checkView 100
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "stop-timer-button") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.text "Stop" ]
+                    )
+                , -- Verify no-timer banner is NOT visible
+                  actions.checkView 100
+                    (Test.Html.Query.findAll
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "no-timer-banner") ]
+                        >> Test.Html.Query.count (Expect.equal 0)
+                    )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Stop timer clears running entry"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Broadcast running entry
+                  Effect.Test.backendUpdate 100
+                    (BroadcastRunningEntry (Types.RunningEntry mockRunningEntry))
+                , -- Verify timer is showing
+                  actions.checkView 200
+                    (Test.Html.Query.has
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "running-timer-banner") ]
+                    )
+                , -- Click stop button
+                  actions.click 100 (Dom.id "stop-timer-button")
+                , -- Verify running timer banner is gone (optimistic update)
+                  actions.checkView 200
+                    (Test.Html.Query.findAll
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "running-timer-banner") ]
+                        >> Test.Html.Query.count (Expect.equal 0)
+                    )
+                , -- Verify no-timer banner is back
+                  actions.checkView 100
+                    (Test.Html.Query.has
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "no-timer-banner") ]
+                    )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Stop timer error shows error banner and restores timer"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Broadcast running entry
+                  Effect.Test.backendUpdate 100
+                    (BroadcastRunningEntry (Types.RunningEntry mockRunningEntry))
+                , -- Click stop button
+                  actions.click 200 (Dom.id "stop-timer-button")
+                , -- Verify timer is gone (optimistic update)
+                  actions.checkView 100
+                    (Test.Html.Query.findAll
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "running-timer-banner") ]
+                        >> Test.Html.Query.count (Expect.equal 0)
+                    )
+                , -- Simulate backend receiving an error from Toggl API
+                  Effect.Test.backendUpdate 100
+                    (GotStopTimerResponse actions.clientId (Err (Toggl.HttpError Effect.Http.NetworkError)))
+                , -- Verify error banner appears
+                  actions.checkView 200
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "stop-timer-error") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.text "Network error" ]
+                    )
+                , -- Verify timer is restored
+                  actions.checkView 100
+                    (Test.Html.Query.has
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "running-timer-banner") ]
+                    )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Dismiss stop timer error"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Setup: broadcast running entry and simulate error response
+                  Effect.Test.backendUpdate 100
+                    (BroadcastRunningEntry (Types.RunningEntry mockRunningEntry))
+                , Effect.Test.backendUpdate 100
+                    (GotStopTimerResponse actions.clientId (Err (Toggl.HttpError Effect.Http.NetworkError)))
+                , -- Verify error banner exists
+                  actions.checkView 200
+                    (Test.Html.Query.has
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "stop-timer-error") ]
+                    )
+                , -- Click dismiss button
+                  actions.click 100 (Dom.id "dismiss-error-button")
+                , -- Verify error banner is gone
+                  actions.checkView 200
+                    (Test.Html.Query.findAll
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "stop-timer-error") ]
+                        >> Test.Html.Query.count (Expect.equal 0)
+                    )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Create calendar modal opens with correct UI elements"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Setup: send workspaces so Connect button appears (wait for auto-project-fetch to complete)
+                  Effect.Test.backendUpdate 100
+                    (GotTogglWorkspaces actions.clientId (Ok [ mockWorkspace ]))
+                , -- Click Create Calendar button to open modal
+                  actions.click 500 (Dom.id "create-calendar-button")
+                , -- Verify modal opened
+                  actions.checkView 100
+                    (Test.Html.Query.has
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "create-calendar-modal") ]
+                    )
+                , -- Submit button should be disabled (no project selected yet)
+                  actions.checkView 100
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "submit-create-calendar") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.disabled True ]
+                    )
+                , -- Workspace button should be visible
+                  actions.checkView 100
+                    (Test.Html.Query.has
+                        [ Test.Html.Selector.text "Test Workspace" ]
+                    )
+                , -- Select workspace from dropdown
+                  actions.click 100 (Dom.id "workspace-select-12345")
+                , -- After selecting workspace, project selector should show project from the auto-fetched projects
+                  actions.checkView 500
+                    (Test.Html.Query.has
+                        [ Test.Html.Selector.text "Chores" ]
+                    )
+                , -- Click on the project (use checkView + has to verify it's clickable, then use data-testid find)
+                  actions.click 100 (Dom.id "project-select-159657524")
+                , -- Calendar name should auto-fill with project name
+                  actions.checkView 100
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "calendar-name-input") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.attribute (Html.Attributes.value "Chores") ]
+                    )
+                , -- Submit button should now be enabled
+                  actions.checkView 100
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "submit-create-calendar") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.disabled False ]
+                    )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Close modal without submitting"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Setup: send workspaces
+                  Effect.Test.backendUpdate 100
+                    (GotTogglWorkspaces actions.clientId (Ok [ mockWorkspace ]))
+                , -- Open create calendar modal
+                  actions.click 100 (Dom.id "create-calendar-button")
+                , -- Verify modal is open
+                  actions.checkView 100
+                    (Test.Html.Query.has
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "create-calendar-modal") ]
+                    )
+                , -- Click close button
+                  actions.click 100 (Dom.id "close-modal-button")
+                , -- Verify modal is closed
+                  actions.checkView 200
+                    (Test.Html.Query.findAll
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "create-calendar-modal") ]
+                        >> Test.Html.Query.count (Expect.equal 0)
+                    )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Connection error shows error message"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Simulate backend receiving API error
+                  Effect.Test.backendUpdate 100
+                    (GotTogglWorkspaces actions.clientId
+                        (Err (Toggl.RateLimited { secondsUntilReset = 60, message = "API rate limited" }))
+                    )
+                , -- Verify rate limit message appears
+                  actions.checkView 200
+                    (Test.Html.Query.has [ Test.Html.Selector.text "Rate Limit Exceeded" ])
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Past days with no entries show 0"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Setup: create calendar with time entry only on Jan 1st
+                  Effect.Test.backendUpdate 100
+                    (GotTogglWorkspaces actions.clientId (Ok [ mockWorkspace ]))
+                , Effect.Test.backendUpdate 100
+                    (GotTogglProjects actions.clientId (Ok [ mockProject ]))
+                , Effect.Test.backendUpdate 100
+                    (GotTogglTimeEntries
+                        actions.clientId
+                        mockCalendarInfo
+                        mockWorkspace.id
+                        mockProject.id
+                        Time.utc
+                        (Ok [ mockTimeEntry ])
+                    )
+                , -- Dec 31 is a past day with no entries, should show "0"
+                  actions.checkView 200
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "day-2025-12-31") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.text "0" ]
+                    )
+                , -- Jan 1st has entries, should show "30"
+                  actions.checkView 100
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "day-2026-01-01") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.text "30" ]
                     )
                 ]
             )
