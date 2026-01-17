@@ -29,6 +29,7 @@ view model =
                         [ Html.text "Not connected to Toggl" ]
                     , Html.button
                         [ Attr.class "btn btn-outline btn-sm"
+                        , Attr.id "connect-toggl-button"
                         , Events.onClick RefreshWorkspaces
                         , Attr.attribute "data-testid" "connect-toggl-button"
                         ]

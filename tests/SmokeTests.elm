@@ -1,14 +1,17 @@
 module SmokeTests exposing (appTests, main)
 
 import Backend
+import Dict
 import Effect.Browser.Dom as Dom
+import Effect.Http
 import Effect.Lamdera
-import Effect.Test exposing (HttpResponse(..))
+import Effect.Test exposing (HttpRequest, HttpResponse(..))
 import Effect.Time
 import Expect
 import Frontend
 import HabitCalendar
 import Html.Attributes
+import Json.Encode as E
 import Test exposing (describe)
 import Test.Html.Query
 import Test.Html.Selector
@@ -86,6 +89,140 @@ mockCalendarInfo : Types.CalendarInfo
 mockCalendarInfo =
     { calendarId = HabitCalendar.HabitCalendarId "159657524"
     , calendarName = "Cleaning"
+    }
+
+
+
+-- JSON ENCODERS FOR HTTP MOCKING
+
+
+{-| Encode a workspace to JSON (matches Toggl API response format).
+-}
+encodeWorkspace : Toggl.TogglWorkspace -> E.Value
+encodeWorkspace workspace =
+    E.object
+        [ ( "id", E.int (Toggl.togglWorkspaceIdToInt workspace.id) )
+        , ( "name", E.string workspace.name )
+        , ( "organization_id", E.int workspace.organizationId )
+        ]
+
+
+{-| Encode a project to JSON (matches Toggl API response format).
+-}
+encodeProject : Toggl.TogglProject -> E.Value
+encodeProject project =
+    E.object
+        [ ( "id", E.int (Toggl.togglProjectIdToInt project.id) )
+        , ( "workspace_id", E.int (Toggl.togglWorkspaceIdToInt project.workspaceId) )
+        , ( "name", E.string project.name )
+        , ( "color", E.string project.color )
+        ]
+
+
+{-| Encode a time entry to JSON (matches Toggl Reports API response format).
+-}
+encodeTimeEntry : Toggl.TimeEntry -> E.Value
+encodeTimeEntry entry =
+    E.object
+        [ ( "id", E.int (Toggl.timeEntryIdToInt entry.id) )
+        , ( "project_id"
+          , case entry.projectId of
+                Just pid ->
+                    E.int (Toggl.togglProjectIdToInt pid)
+
+                Nothing ->
+                    E.null
+          )
+        , ( "description"
+          , case entry.description of
+                Just desc ->
+                    E.string desc
+
+                Nothing ->
+                    E.null
+          )
+        , ( "start", E.string (toIso8601 entry.start) )
+        , ( "stop"
+          , case entry.stop of
+                Just stopTime ->
+                    E.string (toIso8601 stopTime)
+
+                Nothing ->
+                    E.null
+          )
+        , ( "seconds", E.int entry.duration )
+        ]
+
+
+{-| Encode time entries in the Reports API search format.
+The API returns: [{ "time\_entries": [...] }][{ "time_entries": [...] }]
+-}
+encodeTimeEntriesSearchResponse : List Toggl.TimeEntry -> E.Value
+encodeTimeEntriesSearchResponse entries =
+    E.list identity
+        [ E.object
+            [ ( "time_entries", E.list encodeTimeEntry entries )
+            ]
+        ]
+
+
+{-| Convert Posix time to ISO8601 string.
+-}
+toIso8601 : Time.Posix -> String
+toIso8601 posix =
+    let
+        millis : Int
+        millis =
+            Time.posixToMillis posix
+
+        -- Simple ISO8601 format: 2026-01-01T09:00:00Z
+        -- For testing, we use a simplified approach
+        year : Int
+        year =
+            2026
+
+        month : Int
+        month =
+            1
+
+        day : Int
+        day =
+            1
+
+        hours : Int
+        hours =
+            (millis - january1st2026) // (60 * 60 * 1000)
+
+        minutes : Int
+        minutes =
+            modBy 60 ((millis - january1st2026) // (60 * 1000))
+
+        seconds : Int
+        seconds =
+            modBy 60 ((millis - january1st2026) // 1000)
+    in
+    String.fromInt year
+        ++ "-"
+        ++ String.padLeft 2 '0' (String.fromInt month)
+        ++ "-"
+        ++ String.padLeft 2 '0' (String.fromInt day)
+        ++ "T"
+        ++ String.padLeft 2 '0' (String.fromInt hours)
+        ++ ":"
+        ++ String.padLeft 2 '0' (String.fromInt minutes)
+        ++ ":"
+        ++ String.padLeft 2 '0' (String.fromInt seconds)
+        ++ "Z"
+
+
+{-| Create HTTP metadata for a successful response.
+-}
+okMetadata : String -> Effect.Http.Metadata
+okMetadata url =
+    { url = url
+    , statusCode = 200
+    , statusText = "OK"
+    , headers = Dict.empty
     }
 
 
@@ -464,6 +601,41 @@ tests =
                 ]
             )
         ]
+    , Effect.Test.start
+        "HTTP mocking: Connect button triggers API call and receives mocked response"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ -- Initially shows "Not connected"
+                  actions.checkView 100
+                    (Test.Html.Query.has [ Test.Html.Selector.text "Not connected to Toggl" ])
+
+                -- Click "Connect to Toggl" button - this sends FetchTogglWorkspaces to backend
+                -- which triggers an HTTP request that gets intercepted by handleHttpRequest
+                , actions.click 100 (Dom.id "connect-toggl-button")
+
+                -- Wait for the HTTP response to be processed and UI to update
+                -- Should now show "Connected · 1 workspace(s)" from mocked response
+                , actions.checkView 500
+                    (Test.Html.Query.has [ Test.Html.Selector.text "Connected" ])
+
+                -- Should also show the mocked workspace count
+                , actions.checkView 100
+                    (Test.Html.Query.has [ Test.Html.Selector.text "1 workspace" ])
+
+                -- The Create Calendar button should now be visible
+                , actions.checkView 100
+                    (Test.Html.Query.has
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "create-calendar-button") ]
+                    )
+                ]
+            )
+        ]
     ]
 
 
@@ -482,12 +654,51 @@ config : Effect.Test.Config ToBackend FrontendMsg FrontendModel ToFrontend Backe
 config =
     { frontendApp = Frontend.app_
     , backendApp = Backend.app_
-    , handleHttpRequest = always NetworkErrorResponse
+    , handleHttpRequest = handleHttpRequest
     , handlePortToJs = always Nothing
     , handleFileUpload = always Effect.Test.UnhandledFileUpload
     , handleMultipleFilesUpload = always Effect.Test.UnhandledMultiFileUpload
     , domain = safeUrl
     }
+
+
+{-| Handle HTTP requests by mocking Toggl API responses.
+
+Routes requests based on URL patterns:
+
+  - /api/v9/workspaces -> Returns mock workspaces
+  - /api/v9/workspaces/{id}/projects -> Returns mock projects
+  - /reports/api/v3/workspace/{id}/search/time\_entries -> Returns mock time entries
+
+-}
+handleHttpRequest : { data : Effect.Test.Data FrontendModel BackendModel, currentRequest : HttpRequest } -> HttpResponse
+handleHttpRequest { currentRequest } =
+    let
+        url : String
+        url =
+            currentRequest.url
+    in
+    if String.contains "api.track.toggl.com/api/v9/workspaces" url && not (String.contains "/projects" url) then
+        -- GET /api/v9/workspaces - Return list of workspaces
+        JsonHttpResponse
+            (okMetadata url)
+            (E.list encodeWorkspace [ mockWorkspace ])
+
+    else if String.contains "/projects" url then
+        -- GET /api/v9/workspaces/{id}/projects - Return list of projects
+        JsonHttpResponse
+            (okMetadata url)
+            (E.list encodeProject [ mockProject ])
+
+    else if String.contains "reports/api/v3/workspace" url && String.contains "search/time_entries" url then
+        -- POST /reports/api/v3/workspace/{id}/search/time_entries - Return time entries
+        JsonHttpResponse
+            (okMetadata url)
+            (encodeTimeEntriesSearchResponse [ mockTimeEntry ])
+
+    else
+        -- Unhandled request - return network error
+        NetworkErrorResponse
 
 
 appTests : Test.Test

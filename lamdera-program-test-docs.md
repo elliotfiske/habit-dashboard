@@ -9,12 +9,13 @@ This document contains learnings about using `lamdera/program-test` for end-to-e
 1. [Test Structure](#test-structure)
 2. [Frontend Actions](#frontend-actions)
 3. [UI Interactions (Click, Input)](#ui-interactions-click-input)
-4. [Backend Updates](#backend-updates)
-5. [View Testing](#view-testing)
-6. [Data Test IDs](#data-test-ids)
-7. [Test Timing](#test-timing)
-8. [Mock Data Patterns](#mock-data-patterns)
-9. [Common Pitfalls](#common-pitfalls)
+4. [HTTP Request Mocking](#http-request-mocking)
+5. [Backend Updates](#backend-updates)
+6. [View Testing](#view-testing)
+7. [Data Test IDs](#data-test-ids)
+8. [Test Timing](#test-timing)
+9. [Mock Data Patterns](#mock-data-patterns)
+10. [Common Pitfalls](#common-pitfalls)
 
 ## Test Structure
 
@@ -224,6 +225,172 @@ Html.button
     ]
     [ Html.text "Delete" ]
 ```
+
+## HTTP Request Mocking
+
+The test framework allows you to intercept and mock HTTP requests made by your backend. This is more realistic than using `backendUpdate` to inject responses directly.
+
+### The handleHttpRequest Config Option
+
+The `config` record includes a `handleHttpRequest` function:
+
+```elm
+config : Effect.Test.Config ToBackend FrontendMsg FrontendModel ToFrontend BackendMsg BackendModel
+config =
+    { frontendApp = Frontend.app_
+    , backendApp = Backend.app_
+    , handleHttpRequest = handleHttpRequest  -- Your custom handler
+    , handlePortToJs = always Nothing
+    , handleFileUpload = always Effect.Test.UnhandledFileUpload
+    , handleMultipleFilesUpload = always Effect.Test.UnhandledMultiFileUpload
+    , domain = safeUrl
+    }
+```
+
+### Handler Signature
+
+```elm
+handleHttpRequest : { data : Effect.Test.Data FrontendModel BackendModel, currentRequest : HttpRequest } -> HttpResponse
+```
+
+**Parameters:**
+- `data` - Current test state (frontend/backend models, time, etc.)
+- `currentRequest` - The HTTP request being made
+
+### HttpRequest Type
+
+```elm
+type alias HttpRequest =
+    { requestedBy : RequestedBy  -- RequestedByFrontend ClientId | RequestedByBackend
+    , method : String            -- "GET", "POST", "PATCH", etc.
+    , url : String               -- Full URL
+    , body : HttpBody            -- EmptyBody, StringBody, JsonBody, etc.
+    , headers : List ( String, String )
+    , sentAt : Time.Posix
+    }
+```
+
+### HttpResponse Type
+
+```elm
+type HttpResponse
+    = BadUrlResponse String
+    | TimeoutResponse
+    | NetworkErrorResponse
+    | BadStatusResponse Effect.Http.Metadata String
+    | BytesHttpResponse Effect.Http.Metadata Bytes
+    | StringHttpResponse Effect.Http.Metadata String
+    | JsonHttpResponse Effect.Http.Metadata Json.Encode.Value
+    | TextureHttpResponse Effect.Http.Metadata Effect.WebGL.Texture.Texture
+    | UnhandledHttpRequest
+```
+
+### Creating Response Metadata
+
+For successful responses, you need to provide `Effect.Http.Metadata`:
+
+```elm
+okMetadata : String -> Effect.Http.Metadata
+okMetadata url =
+    { url = url
+    , statusCode = 200
+    , statusText = "OK"
+    , headers = Dict.empty
+    }
+```
+
+### Example: Mocking an API
+
+```elm
+import Dict
+import Effect.Http
+import Effect.Test exposing (HttpRequest, HttpResponse(..))
+import Json.Encode as E
+
+handleHttpRequest : { data : Effect.Test.Data FrontendModel BackendModel, currentRequest : HttpRequest } -> HttpResponse
+handleHttpRequest { currentRequest } =
+    let
+        url : String
+        url =
+            currentRequest.url
+    in
+    if String.contains "api.example.com/workspaces" url then
+        -- Return mock workspaces
+        JsonHttpResponse
+            (okMetadata url)
+            (E.list encodeWorkspace [ mockWorkspace ])
+
+    else if String.contains "api.example.com/projects" url then
+        -- Return mock projects
+        JsonHttpResponse
+            (okMetadata url)
+            (E.list encodeProject [ mockProject ])
+
+    else
+        -- Unhandled request - return network error
+        NetworkErrorResponse
+```
+
+### Triggering HTTP Requests in Tests
+
+The most realistic approach is to click a button that triggers the HTTP request:
+
+```elm
+(\actions ->
+    [ -- Click button that triggers HTTP request
+      actions.click 100 (Dom.id "connect-toggl-button")
+
+    -- Wait for HTTP response to be processed
+    , actions.checkView 500
+        (Test.Html.Query.has [ Test.Html.Selector.text "Connected" ])
+    ]
+)
+```
+
+Alternatively, use `actions.sendToBackend` to send a message directly:
+
+```elm
+(\actions ->
+    [ -- Send message to backend that triggers HTTP request
+      actions.sendToBackend 100 FetchTogglWorkspaces
+
+    -- Wait for HTTP response to be processed
+    , actions.checkView 500
+        (Test.Html.Query.has [ Test.Html.Selector.text "Connected" ])
+    ]
+)
+```
+
+### JSON Encoders for Mock Data
+
+Create encoders that match your API's response format:
+
+```elm
+encodeWorkspace : Toggl.TogglWorkspace -> E.Value
+encodeWorkspace workspace =
+    E.object
+        [ ( "id", E.int (Toggl.togglWorkspaceIdToInt workspace.id) )
+        , ( "name", E.string workspace.name )
+        , ( "organization_id", E.int workspace.organizationId )
+        ]
+```
+
+### HTTP Mocking vs backendUpdate
+
+| Approach | Use Case |
+|----------|----------|
+| `handleHttpRequest` | Testing full request/response flow, realistic HTTP behavior |
+| `backendUpdate` | Quick setup, bypassing HTTP layer, testing specific backend message handlers |
+
+**Prefer HTTP mocking when:**
+- Testing end-to-end flow including HTTP layer
+- Verifying correct API URLs are called
+- Testing error handling (timeouts, bad status, etc.)
+
+**Prefer backendUpdate when:**
+- Setting up initial state quickly
+- Testing backend message handlers in isolation
+- HTTP mocking would add unnecessary complexity
 
 ## Backend Updates
 
