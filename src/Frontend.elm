@@ -119,11 +119,31 @@ update msg model =
             )
 
         RefreshCalendar calendarId workspaceId projectId calendarName ->
+            -- Get existing calendar colors, or use defaults
             let
+                existingCalendar : Maybe HabitCalendar.HabitCalendar
+                existingCalendar =
+                    CalendarDict.get calendarId model.calendars
+
+                ( successColor, nonzeroColor ) =
+                    case existingCalendar of
+                        Just cal ->
+                            ( cal.successColor, cal.nonzeroColor )
+
+                        Nothing ->
+                            let
+                                defaultBlue : Color.Color
+                                defaultBlue =
+                                    Color.rgb255 59 130 246
+                            in
+                            ( defaultBlue, ColorLogic.muteColor defaultBlue )
+
                 calendarInfo : Types.CalendarInfo
                 calendarInfo =
                     { calendarId = calendarId
                     , calendarName = calendarName
+                    , successColor = successColor
+                    , nonzeroColor = nonzeroColor
                     }
             in
             ( model
@@ -131,12 +151,19 @@ update msg model =
             )
 
         OpenCreateCalendarModal ->
+            let
+                defaultBlue : Color.Color
+                defaultBlue =
+                    Color.rgb255 59 130 246
+            in
             ( { model
                 | modalState =
                     ModalCreateCalendar
                         { selectedWorkspace = Nothing
                         , selectedProject = Nothing
                         , calendarName = ""
+                        , successColor = defaultBlue
+                        , nonzeroColor = ColorLogic.muteColor defaultBlue
                         }
               }
             , Command.none
@@ -146,22 +173,32 @@ update msg model =
             ( { model | modalState = ModalClosed }, Command.none )
 
         SelectWorkspace workspace ->
-            ( { model
-                | modalState =
-                    ModalCreateCalendar
-                        { selectedWorkspace = Just workspace
-                        , selectedProject = Nothing
-                        , calendarName = ""
-                        }
-                , availableProjects = []
-                , projectsLoading = True
-              }
-            , Effect.Lamdera.sendToBackend (FetchTogglProjects workspace.id)
-            )
+            case model.modalState of
+                ModalCreateCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalCreateCalendar
+                                { modalData
+                                    | selectedWorkspace = Just workspace
+                                    , selectedProject = Nothing
+                                }
+                        , availableProjects = []
+                        , projectsLoading = True
+                      }
+                    , Effect.Lamdera.sendToBackend (FetchTogglProjects workspace.id)
+                    )
+
+                _ ->
+                    ( model, Command.none )
 
         SelectProject project ->
             case model.modalState of
                 ModalCreateCalendar modalData ->
+                    let
+                        projectColor : Color.Color
+                        projectColor =
+                            ColorLogic.hexToColor project.color
+                    in
                     ( { model
                         | modalState =
                             ModalCreateCalendar
@@ -173,13 +210,14 @@ update msg model =
 
                                         else
                                             modalData.calendarName
+                                    , successColor = projectColor
+                                    , nonzeroColor = ColorLogic.muteColor projectColor
                                 }
                       }
                     , Command.none
                     )
 
                 ModalEditCalendar _ ->
-                    -- TODO: Handle project selection in edit modal
                     ( model, Command.none )
 
                 ModalClosed ->
@@ -202,6 +240,34 @@ update msg model =
                 ModalClosed ->
                     ( model, Command.none )
 
+        SuccessColorChanged hexColor ->
+            case model.modalState of
+                ModalCreateCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalCreateCalendar
+                                { modalData | successColor = ColorLogic.hexToColor hexColor }
+                      }
+                    , Command.none
+                    )
+
+                _ ->
+                    ( model, Command.none )
+
+        NonzeroColorChanged hexColor ->
+            case model.modalState of
+                ModalCreateCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalCreateCalendar
+                                { modalData | nonzeroColor = ColorLogic.hexToColor hexColor }
+                      }
+                    , Command.none
+                    )
+
+                _ ->
+                    ( model, Command.none )
+
         SubmitCreateCalendar ->
             case model.modalState of
                 ModalCreateCalendar modalData ->
@@ -216,6 +282,8 @@ update msg model =
                                 calendarInfo =
                                     { calendarId = calendarId
                                     , calendarName = modalData.calendarName
+                                    , successColor = modalData.successColor
+                                    , nonzeroColor = modalData.nonzeroColor
                                     }
                             in
                             ( { model | modalState = ModalClosed }
@@ -284,6 +352,8 @@ update msg model =
                                 , selectedWorkspace = workspace
                                 , selectedProject = project
                                 , calendarName = calendar.name
+                                , successColor = calendar.successColor
+                                , nonzeroColor = calendar.nonzeroColor
                                 }
                       }
                     , Command.none
@@ -311,10 +381,19 @@ update msg model =
         EditCalendarSelectProject project ->
             case model.modalState of
                 ModalEditCalendar modalData ->
+                    let
+                        projectColor : Color.Color
+                        projectColor =
+                            ColorLogic.hexToColor project.color
+                    in
                     ( { model
                         | modalState =
                             ModalEditCalendar
-                                { modalData | selectedProject = project }
+                                { modalData
+                                    | selectedProject = project
+                                    , successColor = projectColor
+                                    , nonzeroColor = ColorLogic.muteColor projectColor
+                                }
                       }
                     , Command.none
                     )
@@ -335,6 +414,34 @@ update msg model =
                 _ ->
                     ( model, Command.none )
 
+        EditSuccessColorChanged hexColor ->
+            case model.modalState of
+                ModalEditCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalEditCalendar
+                                { modalData | successColor = ColorLogic.hexToColor hexColor }
+                      }
+                    , Command.none
+                    )
+
+                _ ->
+                    ( model, Command.none )
+
+        EditNonzeroColorChanged hexColor ->
+            case model.modalState of
+                ModalEditCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalEditCalendar
+                                { modalData | nonzeroColor = ColorLogic.hexToColor hexColor }
+                      }
+                    , Command.none
+                    )
+
+                _ ->
+                    ( model, Command.none )
+
         SubmitEditCalendar ->
             case model.modalState of
                 ModalEditCalendar modalData ->
@@ -345,6 +452,8 @@ update msg model =
                             modalData.calendarName
                             modalData.selectedWorkspace.id
                             modalData.selectedProject.id
+                            modalData.successColor
+                            modalData.nonzeroColor
                         )
                     )
 
