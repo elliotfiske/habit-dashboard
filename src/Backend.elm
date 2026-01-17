@@ -156,10 +156,19 @@ update msg model =
             case result of
                 Ok projects ->
                     let
-                        -- Append new projects to existing ones (we fetch from multiple workspaces)
+                        -- Append new projects and deduplicate by ID
+                        -- (same workspace may be fetched multiple times)
+                        existingIds : List Toggl.TogglProjectId
+                        existingIds =
+                            List.map .id model.togglProjects
+
+                        newProjects : List Toggl.TogglProject
+                        newProjects =
+                            List.filter (\p -> not (List.member p.id existingIds)) projects
+
                         allProjects : List Toggl.TogglProject
                         allProjects =
-                            model.togglProjects ++ projects
+                            model.togglProjects ++ newProjects
                     in
                     ( { model | togglProjects = allProjects }
                     , Effect.Lamdera.sendToFrontend clientId
@@ -265,6 +274,12 @@ update msg model =
                     in
                     ( model, Command.none )
 
+        BroadcastRunningEntry runningEntry ->
+            -- Update model and broadcast to all connected clients
+            ( { model | runningEntry = runningEntry }
+            , Effect.Lamdera.broadcast (RunningEntryUpdated runningEntry)
+            )
+
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Command BackendOnly ToFrontend BackendMsg )
 updateFromFrontend _ clientId msg model =
@@ -312,7 +327,7 @@ updateFromFrontend _ clientId msg model =
             , Effect.Lamdera.broadcast WebhookEventsCleared
             )
 
-        UpdateCalendar calendarId newName newWorkspaceId newProjectId ->
+        UpdateCalendar calendarId newName newWorkspaceId newProjectId newSuccessColor newNonzeroColor ->
             case CalendarDict.get calendarId model.calendars of
                 Just existingCalendar ->
                     let
@@ -320,13 +335,15 @@ updateFromFrontend _ clientId msg model =
                         projectChanged =
                             existingCalendar.projectId /= newProjectId
 
-                        -- Update calendar with new name (and project info)
+                        -- Update calendar with new values
                         updatedCalendar : HabitCalendar.HabitCalendar
                         updatedCalendar =
                             { existingCalendar
                                 | name = newName
                                 , workspaceId = newWorkspaceId
                                 , projectId = newProjectId
+                                , successColor = newSuccessColor
+                                , nonzeroColor = newNonzeroColor
                             }
 
                         -- If project changed, clear entries (will re-fetch)
