@@ -8,12 +8,13 @@ This document contains learnings about using `lamdera/program-test` for end-to-e
 
 1. [Test Structure](#test-structure)
 2. [Frontend Actions](#frontend-actions)
-3. [Backend Updates](#backend-updates)
-4. [View Testing](#view-testing)
-5. [Data Test IDs](#data-test-ids)
-6. [Test Timing](#test-timing)
-7. [Mock Data Patterns](#mock-data-patterns)
-8. [Common Pitfalls](#common-pitfalls)
+3. [UI Interactions (Click, Input)](#ui-interactions-click-input)
+4. [Backend Updates](#backend-updates)
+5. [View Testing](#view-testing)
+6. [Data Test IDs](#data-test-ids)
+7. [Test Timing](#test-timing)
+8. [Mock Data Patterns](#mock-data-patterns)
+9. [Common Pitfalls](#common-pitfalls)
 
 ## Test Structure
 
@@ -107,11 +108,122 @@ From reading the source code in `EXTERNAL-lamdera-program-test/src/Effect/Test.e
   - Takes a delay in milliseconds
   - Takes a Test.Html.Query function
 
+- `actions.click : Int -> HtmlId -> Action`
+  - Click on an element by its HTML id
+  - Takes a delay in milliseconds
+  - Takes an `HtmlId` (created with `Dom.id "element-id"`)
+
+- `actions.input : Int -> HtmlId -> String -> Action`
+  - Enter text into an input field
+  - Takes a delay in milliseconds
+  - Takes an `HtmlId` (created with `Dom.id "element-id"`)
+  - Takes the text to enter
+
 - `actions.clientId : ClientId`
   - The client ID for this frontend connection
   - Useful when triggering backend messages that need to know which client to respond to
 
-- Other methods like `click`, `update`, `sendToBackend` (not fully explored yet)
+## UI Interactions (Click, Input)
+
+### Required Import
+
+To use `click` and `input` actions, you need to import `Effect.Browser.Dom`:
+
+```elm
+import Effect.Browser.Dom as Dom
+```
+
+### Clicking Elements
+
+Use `actions.click` to simulate clicking on an element:
+
+```elm
+-- Signature: click : Int -> HtmlId -> Action
+actions.click 100 (Dom.id "my-button-id")
+```
+
+**Important**: The element must have an `Attr.id` attribute in your view code:
+
+```elm
+-- In your view:
+Html.button
+    [ Attr.id "submit-form"  -- Required for click to find it
+    , Attr.class "btn btn-primary"
+    , Events.onClick SubmitForm
+    ]
+    [ Html.text "Submit" ]
+
+-- In your test:
+actions.click 100 (Dom.id "submit-form")
+```
+
+### Entering Text in Inputs
+
+Use `actions.input` to simulate typing into an input field:
+
+```elm
+-- Signature: input : Int -> HtmlId -> String -> Action
+actions.input 100 (Dom.id "email-input") "user@example.com"
+```
+
+**Important**: The input element must have an `Attr.id` attribute:
+
+```elm
+-- In your view:
+Html.input
+    [ Attr.id "email-input"  -- Required for input to find it
+    , Attr.type_ "email"
+    , Attr.value model.email
+    , Events.onInput EmailChanged
+    ]
+    []
+
+-- In your test:
+actions.input 100 (Dom.id "email-input") "user@example.com"
+```
+
+### Complete Example: Form Interaction
+
+```elm
+import Effect.Browser.Dom as Dom
+
+-- ... in your test:
+(\actions ->
+    [ -- Click to open a modal
+      actions.click 100 (Dom.id "open-modal-btn")
+
+    -- Enter text in an input field
+    , actions.input 100 (Dom.id "name-input") "My Calendar"
+
+    -- Click submit button
+    , actions.click 100 (Dom.id "submit-btn")
+
+    -- Verify the result
+    , actions.checkView 200
+        (Test.Html.Query.has [ Test.Html.Selector.text "My Calendar" ])
+    ]
+)
+```
+
+### id vs data-testid
+
+**For test framework interactions (`click`, `input`)**: Use `Attr.id`
+- The test framework's `click` and `input` methods look up elements by HTML `id` attribute
+- Use `Dom.id "element-id"` to reference them in tests
+
+**For view assertions (`checkView`)**: Use `data-testid`
+- The `Test.Html.Selector.attribute` selector can match any attribute
+- `data-testid` is conventional for test-only identifiers that shouldn't affect styling
+
+```elm
+-- Element with both (when you need both interactions and assertions):
+Html.button
+    [ Attr.id "delete-calendar-123"  -- For click/input
+    , Attr.attribute "data-testid" "delete-calendar-123"  -- For checkView queries
+    , Events.onClick (DeleteCalendar id)
+    ]
+    [ Html.text "Delete" ]
+```
 
 ## Backend Updates
 
@@ -406,6 +518,44 @@ actions.checkView 100 (...)
 
 -- Even safer for complex updates
 actions.checkView 200 (...)
+```
+
+### Pitfall 6: Using String Instead of HtmlId for click/input
+
+The `click` and `input` methods require an `HtmlId` type, not a plain string.
+
+❌ **Wrong**:
+```elm
+actions.click 100 "my-button"
+```
+
+✅ **Correct**:
+```elm
+import Effect.Browser.Dom as Dom
+
+actions.click 100 (Dom.id "my-button")
+```
+
+### Pitfall 7: Missing id Attribute on Elements
+
+The `click` and `input` methods look up elements by HTML `id`, not `data-testid`.
+
+❌ **Wrong** (element only has data-testid):
+```elm
+-- In view:
+Html.button [ Attr.attribute "data-testid" "submit-btn" ] [ Html.text "Submit" ]
+
+-- In test (will fail - can't find element):
+actions.click 100 (Dom.id "submit-btn")
+```
+
+✅ **Correct** (element has id attribute):
+```elm
+-- In view:
+Html.button [ Attr.id "submit-btn" ] [ Html.text "Submit" ]
+
+-- In test:
+actions.click 100 (Dom.id "submit-btn")
 ```
 
 ## Testing Patterns
