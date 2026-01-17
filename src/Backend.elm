@@ -7,7 +7,7 @@ import Effect.Http
 import Effect.Lamdera exposing (ClientId, SessionId)
 import Effect.Subscription as Subscription exposing (Subscription)
 import Env
-import HabitCalendar exposing (HabitCalendarId)
+import HabitCalendar
 import Lamdera as L
 import SeqDict
 import Toggl
@@ -116,7 +116,9 @@ update msg model =
                 webhookEventsCmds =
                     List.map
                         (\event -> Effect.Lamdera.sendToFrontend clientId (WebhookDebugEvent event))
-                        (List.reverse model.webhookEvents) -- Reverse to send oldest first
+                        (List.reverse model.webhookEvents)
+
+                -- Reverse to send oldest first
             in
             ( model
             , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: webhookEventsCmds)
@@ -185,23 +187,23 @@ update msg model =
             case result of
                 Ok entries ->
                     let
-                        calendarId : HabitCalendarId
-                        calendarId =
-                            calendarInfo.calendarId
-
-                        calendarName : String
-                        calendarName =
-                            calendarInfo.calendarName
-
-                        -- Create a calendar from the time entries using the user's timezone
+                        -- Create a calendar from the time entries with custom colors
                         newCalendar : HabitCalendar.HabitCalendar
                         newCalendar =
-                            HabitCalendar.fromTimeEntries calendarId calendarName userZone workspaceId projectId entries
+                            HabitCalendar.fromTimeEntriesWithColors
+                                calendarInfo.calendarId
+                                calendarInfo.calendarName
+                                userZone
+                                workspaceId
+                                projectId
+                                calendarInfo.successColor
+                                calendarInfo.nonzeroColor
+                                entries
 
                         -- Update the calendars dict
                         updatedCalendars : CalendarDict.CalendarDict
                         updatedCalendars =
-                            CalendarDict.insert calendarId newCalendar model.calendars
+                            CalendarDict.insert calendarInfo.calendarId newCalendar model.calendars
                     in
                     ( { model | calendars = updatedCalendars }
                     , Command.batch
