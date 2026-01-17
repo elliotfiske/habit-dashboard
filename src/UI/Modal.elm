@@ -8,7 +8,6 @@ and calendar name input.
 
 -}
 
-import ColorLogic
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Html.Events as Events

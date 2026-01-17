@@ -1,7 +1,6 @@
 module SmokeTests exposing (appTests, main)
 
 import Backend
-import Color
 import Dict
 import Effect.Browser.Dom as Dom
 import Effect.Http
@@ -91,8 +90,8 @@ mockCalendarInfo : Types.CalendarInfo
 mockCalendarInfo =
     { calendarId = HabitCalendar.HabitCalendarId "159657524"
     , calendarName = "Cleaning"
-    , successColor = Color.rgb255 168 85 247
-    , nonzeroColor = Color.rgb255 216 180 254
+    , successColor = "#805AD5"
+    , nonzeroColor = "#D8B4FE"
     }
 
 

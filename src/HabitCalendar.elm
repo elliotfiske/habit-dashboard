@@ -19,7 +19,6 @@ with each day showing the total minutes tracked for a specific habit.
 
 -}
 
-import Color exposing (Color)
 import Dict exposing (Dict)
 import SeqDict exposing (SeqDict)
 import Time exposing (Zone)
