@@ -7,6 +7,7 @@ and handling errors from timer operations.
 
 -}
 
+import Color
 import ColorLogic
 import Html exposing (Html)
 import Html.Attributes as Attr
@@ -74,16 +75,20 @@ runningTimerHeader model =
                     case maybeProject of
                         Just project ->
                             let
-                                isDark : Bool
-                                isDark =
-                                    ColorLogic.isColorDark project.color
+                                projectColor : Color.Color
+                                projectColor =
+                                    ColorLogic.hexToColor project.color
+
+                                isLightColor : Bool
+                                isLightColor =
+                                    ColorLogic.isLight projectColor
                             in
                             ( Attr.style "background-color" project.color
-                            , if isDark then
-                                "text-white"
+                            , if isLightColor then
+                                "text-primary-content"
 
                               else
-                                "text-primary-content"
+                                "text-white"
                             )
 
                         Nothing ->
@@ -114,6 +119,7 @@ runningTimerHeader model =
                             [ Html.text timerText ]
                         , Html.button
                             [ Attr.class "btn btn-sm btn-ghost"
+                            , Attr.id "stop-timer-button"
                             , Events.onClick StopRunningTimer
                             , Attr.attribute "data-testid" "stop-timer-button"
                             ]
@@ -140,6 +146,7 @@ stopTimerErrorBanner maybeError =
                     [ Html.span [] [ Html.text ("⚠ " ++ errorMsg) ]
                     , Html.button
                         [ Attr.class "btn btn-sm btn-ghost"
+                        , Attr.id "dismiss-error-button"
                         , Events.onClick DismissStopTimerError
                         , Attr.attribute "data-testid" "dismiss-error-button"
                         ]
