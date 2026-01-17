@@ -223,25 +223,25 @@ cellColors calendar comparison minutes =
                 let
                     textColor : String
                     textColor =
-                        if ColorLogic.isLight calendar.successColor then
+                        if ColorLogic.isLight (ColorLogic.hexToColor calendar.successColor) then
                             "#000"
 
                         else
                             "#fff"
                 in
-                ( ColorLogic.colorToHex calendar.successColor, textColor )
+                ( calendar.successColor, textColor )
 
             else if minutes > 0 then
                 let
                     textColor : String
                     textColor =
-                        if ColorLogic.isLight calendar.nonzeroColor then
+                        if ColorLogic.isLight (ColorLogic.hexToColor calendar.nonzeroColor) then
                             "#000"
 
                         else
                             "#fff"
                 in
-                ( ColorLogic.colorToHex calendar.nonzeroColor, textColor )
+                ( calendar.nonzeroColor, textColor )
 
             else
                 ( "oklch(var(--b3))", "oklch(var(--bc))" )

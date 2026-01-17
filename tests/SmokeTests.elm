@@ -12,6 +12,7 @@ import Expect
 import Frontend
 import HabitCalendar
 import Html.Attributes
+import Iso8601
 import Json.Encode as E
 import Test exposing (describe)
 import Test.Html.Query
@@ -158,11 +159,11 @@ encodeTimeEntry entry =
                 Nothing ->
                     E.null
           )
-        , ( "start", E.string (toIso8601 entry.start) )
+        , ( "start", E.string (Iso8601.fromTime entry.start) )
         , ( "stop"
           , case entry.stop of
                 Just stopTime ->
-                    E.string (toIso8601 stopTime)
+                    E.string (Iso8601.fromTime stopTime)
 
                 Nothing ->
                     E.null
@@ -181,55 +182,6 @@ encodeTimeEntriesSearchResponse entries =
             [ ( "time_entries", E.list encodeTimeEntry entries )
             ]
         ]
-
-
-{-| Convert Posix time to ISO8601 string.
--}
-toIso8601 : Time.Posix -> String
-toIso8601 posix =
-    let
-        millis : Int
-        millis =
-            Time.posixToMillis posix
-
-        -- Simple ISO8601 format: 2026-01-01T09:00:00Z
-        -- For testing, we use a simplified approach
-        year : Int
-        year =
-            2026
-
-        month : Int
-        month =
-            1
-
-        day : Int
-        day =
-            1
-
-        hours : Int
-        hours =
-            (millis - january1st2026) // (60 * 60 * 1000)
-
-        minutes : Int
-        minutes =
-            modBy 60 ((millis - january1st2026) // (60 * 1000))
-
-        seconds : Int
-        seconds =
-            modBy 60 ((millis - january1st2026) // 1000)
-    in
-    String.fromInt year
-        ++ "-"
-        ++ String.padLeft 2 '0' (String.fromInt month)
-        ++ "-"
-        ++ String.padLeft 2 '0' (String.fromInt day)
-        ++ "T"
-        ++ String.padLeft 2 '0' (String.fromInt hours)
-        ++ ":"
-        ++ String.padLeft 2 '0' (String.fromInt minutes)
-        ++ ":"
-        ++ String.padLeft 2 '0' (String.fromInt seconds)
-        ++ "Z"
 
 
 {-| Create HTTP metadata for a successful response.

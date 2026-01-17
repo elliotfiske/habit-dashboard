@@ -15,7 +15,6 @@ module Types exposing
     )
 
 import CalendarDict exposing (CalendarDict)
-import Color exposing (Color)
 import Effect.Browser
 import Effect.Browser.Navigation
 import Effect.Lamdera
@@ -65,8 +64,8 @@ type alias CreateCalendarModal =
     { selectedWorkspace : Maybe TogglWorkspace
     , selectedProject : Maybe TogglProject
     , calendarName : String
-    , successColor : Color
-    , nonzeroColor : Color
+    , successColor : String
+    , nonzeroColor : String
     }
 
 
@@ -78,8 +77,8 @@ type alias EditCalendarModal =
     , selectedWorkspace : Toggl.TogglWorkspace
     , selectedProject : Toggl.TogglProject
     , calendarName : String
-    , successColor : Color
-    , nonzeroColor : Color
+    , successColor : String
+    , nonzeroColor : String
     }
 
 
@@ -152,7 +151,7 @@ type ToBackend
     | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId Toggl.TogglProjectId String String Zone -- calendarInfo, workspaceId, projectId, startDate, endDate, userZone
     | StopTogglTimer TogglWorkspaceId TimeEntryId
     | ClearWebhookEventsRequest
-    | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId Color Color -- calendarId, name, workspaceId, projectId, successColor, nonzeroColor
+    | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId String String -- calendarId, name, workspaceId, projectId, successColor, nonzeroColor
     | DeleteCalendarRequest HabitCalendar.HabitCalendarId
 
 
@@ -161,8 +160,8 @@ type ToBackend
 type alias CalendarInfo =
     { calendarId : HabitCalendarId
     , calendarName : String
-    , successColor : Color
-    , nonzeroColor : Color
+    , successColor : String
+    , nonzeroColor : String
     }
 
 

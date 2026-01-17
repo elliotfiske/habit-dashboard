@@ -132,11 +132,14 @@ update msg model =
 
                         Nothing ->
                             let
-                                defaultBlue : Color.Color
+                                defaultBlue : String
                                 defaultBlue =
-                                    Color.rgb255 59 130 246
+                                    "#3B82F6"
                             in
-                            ( defaultBlue, ColorLogic.muteColor defaultBlue )
+                            ( defaultBlue
+                            , ColorLogic.colorToHex (ColorLogic.muteColor (ColorLogic.hexToColor defaultBlue))
+                              -- simplify this with pipes
+                            )
 
                 calendarInfo : Types.CalendarInfo
                 calendarInfo =
@@ -162,8 +165,8 @@ update msg model =
                         { selectedWorkspace = Nothing
                         , selectedProject = Nothing
                         , calendarName = ""
-                        , successColor = defaultBlue
-                        , nonzeroColor = ColorLogic.muteColor defaultBlue
+                        , successColor = ColorLogic.colorToHex defaultBlue
+                        , nonzeroColor = ColorLogic.colorToHex (ColorLogic.muteColor defaultBlue)
                         }
               }
             , Command.none
@@ -210,8 +213,8 @@ update msg model =
 
                                         else
                                             modalData.calendarName
-                                    , successColor = projectColor
-                                    , nonzeroColor = ColorLogic.muteColor projectColor
+                                    , successColor = ColorLogic.colorToHex projectColor
+                                    , nonzeroColor = ColorLogic.colorToHex (ColorLogic.muteColor projectColor)
                                 }
                       }
                     , Command.none
@@ -246,7 +249,7 @@ update msg model =
                     ( { model
                         | modalState =
                             ModalCreateCalendar
-                                { modalData | successColor = ColorLogic.hexToColor hexColor }
+                                { modalData | successColor = hexColor }
                       }
                     , Command.none
                     )
@@ -260,7 +263,7 @@ update msg model =
                     ( { model
                         | modalState =
                             ModalCreateCalendar
-                                { modalData | nonzeroColor = ColorLogic.hexToColor hexColor }
+                                { modalData | nonzeroColor = hexColor }
                       }
                     , Command.none
                     )
@@ -391,8 +394,8 @@ update msg model =
                             ModalEditCalendar
                                 { modalData
                                     | selectedProject = project
-                                    , successColor = projectColor
-                                    , nonzeroColor = ColorLogic.muteColor projectColor
+                                    , successColor = ColorLogic.colorToHex projectColor
+                                    , nonzeroColor = ColorLogic.colorToHex (ColorLogic.muteColor projectColor)
                                 }
                       }
                     , Command.none
@@ -420,7 +423,7 @@ update msg model =
                     ( { model
                         | modalState =
                             ModalEditCalendar
-                                { modalData | successColor = ColorLogic.hexToColor hexColor }
+                                { modalData | successColor = hexColor }
                       }
                     , Command.none
                     )
@@ -434,7 +437,7 @@ update msg model =
                     ( { model
                         | modalState =
                             ModalEditCalendar
-                                { modalData | nonzeroColor = ColorLogic.hexToColor hexColor }
+                                { modalData | nonzeroColor = hexColor }
                       }
                     , Command.none
                     )

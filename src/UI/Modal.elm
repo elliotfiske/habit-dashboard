@@ -55,8 +55,8 @@ viewCreateCalendar model modalData =
             , viewProjectSelector model modalData
             , viewCalendarNameInput modalData
             , viewColorPickers
-                { successColor = ColorLogic.colorToHex modalData.successColor
-                , nonzeroColor = ColorLogic.colorToHex modalData.nonzeroColor
+                { successColor = modalData.successColor
+                , nonzeroColor = modalData.nonzeroColor
                 , onSuccessChange = SuccessColorChanged
                 , onNonzeroChange = NonzeroColorChanged
                 }
@@ -296,8 +296,8 @@ viewEditCalendar model modalData =
             , viewEditProjectSelector model modalData
             , viewEditCalendarNameInput modalData
             , viewColorPickers
-                { successColor = ColorLogic.colorToHex modalData.successColor
-                , nonzeroColor = ColorLogic.colorToHex modalData.nonzeroColor
+                { successColor = modalData.successColor
+                , nonzeroColor = modalData.nonzeroColor
                 , onSuccessChange = EditSuccessColorChanged
                 , onNonzeroChange = EditNonzeroColorChanged
                 }

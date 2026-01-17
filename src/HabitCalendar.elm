@@ -45,8 +45,8 @@ habitCalendarIdToString (HabitCalendarId id) =
 type alias HabitCalendar =
     { id : HabitCalendarId
     , name : String
-    , successColor : Color
-    , nonzeroColor : Color
+    , successColor : String
+    , nonzeroColor : String
     , weeksShowing : Int
     , entries : Dict Int DayEntry -- Keyed by day (posix millis at start of day)
     , timeEntries : SeqDict TimeEntryId TimeEntry -- All time entries for this calendar
@@ -70,8 +70,8 @@ emptyCalendar : HabitCalendarId -> String -> Zone -> TogglWorkspaceId -> TogglPr
 emptyCalendar id name zone workspaceId projectId =
     { id = id
     , name = name
-    , successColor = Color.rgb255 168 85 247 -- purple-500
-    , nonzeroColor = Color.rgb255 216 180 254 -- purple-300
+    , successColor = "#805AD5" -- purple-500
+    , nonzeroColor = "#D8B4FE" -- purple-300
     , weeksShowing = 4
     , entries = Dict.empty
     , timeEntries = SeqDict.empty
@@ -119,8 +119,8 @@ fromTimeEntries calendarId name zone workspaceId projectId entries =
     in
     { id = calendarId
     , name = name
-    , successColor = Color.rgb255 168 85 247 -- purple-500
-    , nonzeroColor = Color.rgb255 216 180 254 -- purple-300
+    , successColor = "#805AD5" -- purple-500
+    , nonzeroColor = "#D8B4FE" -- purple-300
     , weeksShowing = 4
     , entries = aggregatedEntries
     , timeEntries = entriesDict
@@ -138,8 +138,8 @@ fromTimeEntriesWithColors :
     -> Zone
     -> TogglWorkspaceId
     -> TogglProjectId
-    -> Color
-    -> Color
+    -> String
+    -> String
     -> List TimeEntry
     -> HabitCalendar
 fromTimeEntriesWithColors calendarId name zone workspaceId projectId successColor nonzeroColor entries =
