@@ -8,6 +8,7 @@ and calendar name input.
 
 -}
 
+import ColorLogic
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Html.Events as Events
@@ -36,7 +37,10 @@ Shows workspace selector, project selector, calendar name input, and action butt
 -}
 viewCreateCalendar : FrontendModel -> CreateCalendarModal -> Html FrontendMsg
 viewCreateCalendar model modalData =
-    Html.div [ Attr.class "fixed inset-0 z-50 flex items-center justify-center" ]
+    Html.div
+        [ Attr.class "fixed inset-0 z-50 flex items-center justify-center"
+        , Attr.attribute "data-testid" "create-calendar-modal"
+        ]
         [ -- Backdrop
           Html.div
             [ Attr.class "absolute inset-0 bg-black/50"
@@ -50,14 +54,22 @@ viewCreateCalendar model modalData =
             , viewWorkspaceSelector model modalData
             , viewProjectSelector model modalData
             , viewCalendarNameInput modalData
+            , viewColorPickers
+                { successColor = ColorLogic.colorToHex modalData.successColor
+                , nonzeroColor = ColorLogic.colorToHex modalData.nonzeroColor
+                , onSuccessChange = SuccessColorChanged
+                , onNonzeroChange = NonzeroColorChanged
+                }
             , Html.div [ Attr.class "flex justify-end gap-2 mt-6" ]
                 [ Html.button
                     [ Attr.class "btn"
+                    , Attr.id "close-modal-button"
                     , Events.onClick CloseModal
                     ]
                     [ Html.text "Cancel" ]
                 , Html.button
                     [ Attr.class "btn btn-primary"
+                    , Attr.id "submit-create-calendar"
                     , Attr.disabled (not (canSubmitCalendar modalData))
                     , Events.onClick SubmitCreateCalendar
                     , Attr.attribute "data-testid" "submit-create-calendar"
@@ -129,6 +141,7 @@ workspaceButton selectedWorkspace workspace =
                         "btn-outline"
                    )
             )
+        , Attr.id ("workspace-select-" ++ String.fromInt (Toggl.togglWorkspaceIdToInt workspace.id))
         , Events.onClick (SelectWorkspace workspace)
         , Attr.attribute "data-testid" ("workspace-" ++ String.fromInt (Toggl.togglWorkspaceIdToInt workspace.id))
         ]
@@ -194,6 +207,7 @@ projectButton selectedProject project =
                         "btn-outline"
                    )
             )
+        , Attr.id ("project-select-" ++ Toggl.togglProjectIdToString project.id)
         , Events.onClick (SelectProject project)
         , Attr.attribute "data-testid" ("project-" ++ Toggl.togglProjectIdToString project.id)
         ]
@@ -212,10 +226,53 @@ viewCalendarNameInput modalData =
             , Attr.placeholder "Enter a name for this calendar"
             , Attr.value modalData.calendarName
             , Attr.class "input input-bordered"
+            , Attr.id "calendar-name-input"
             , Events.onInput CalendarNameChanged
             , Attr.attribute "data-testid" "calendar-name-input"
             ]
             []
+        ]
+
+
+{-| View the color pickers for success and nonzero colors.
+-}
+viewColorPickers :
+    { successColor : String
+    , nonzeroColor : String
+    , onSuccessChange : String -> FrontendMsg
+    , onNonzeroChange : String -> FrontendMsg
+    }
+    -> Html FrontendMsg
+viewColorPickers config =
+    Html.div [ Attr.class "form-control mb-4" ]
+        [ Html.label [ Attr.class "label" ]
+            [ Html.span [ Attr.class "label-text" ] [ Html.text "Colors" ] ]
+        , Html.div [ Attr.class "flex gap-6" ]
+            [ Html.div [ Attr.class "flex flex-col gap-1" ]
+                [ Html.label [ Attr.class "text-sm text-base-content/70" ]
+                    [ Html.text "Success (30+ min)" ]
+                , Html.input
+                    [ Attr.type_ "color"
+                    , Attr.value config.successColor
+                    , Events.onInput config.onSuccessChange
+                    , Attr.class "w-12 h-10 cursor-pointer rounded border border-base-300"
+                    , Attr.attribute "data-testid" "success-color-picker"
+                    ]
+                    []
+                ]
+            , Html.div [ Attr.class "flex flex-col gap-1" ]
+                [ Html.label [ Attr.class "text-sm text-base-content/70" ]
+                    [ Html.text "Nonzero (1-29 min)" ]
+                , Html.input
+                    [ Attr.type_ "color"
+                    , Attr.value config.nonzeroColor
+                    , Events.onInput config.onNonzeroChange
+                    , Attr.class "w-12 h-10 cursor-pointer rounded border border-base-300"
+                    , Attr.attribute "data-testid" "nonzero-color-picker"
+                    ]
+                    []
+                ]
+            ]
         ]
 
 
@@ -238,6 +295,12 @@ viewEditCalendar model modalData =
             , viewEditWorkspaceSelector model modalData
             , viewEditProjectSelector model modalData
             , viewEditCalendarNameInput modalData
+            , viewColorPickers
+                { successColor = ColorLogic.colorToHex modalData.successColor
+                , nonzeroColor = ColorLogic.colorToHex modalData.nonzeroColor
+                , onSuccessChange = EditSuccessColorChanged
+                , onNonzeroChange = EditNonzeroColorChanged
+                }
             , Html.div [ Attr.class "flex justify-end gap-2 mt-6" ]
                 [ Html.button
                     [ Attr.class "btn"
