@@ -4,6 +4,7 @@ import Browser
 import Browser.Navigation
 import CalendarDict
 import CalendarLogic
+import Color
 import ColorLogic
 import Duration
 import Effect.Browser exposing (UrlRequest)
@@ -426,7 +427,19 @@ view model =
                             (\projectId ->
                                 List.filter (\p -> p.id == projectId) model.availableProjects
                                     |> List.head
-                                    |> Maybe.map (\project -> Attr.style "background-color" (ColorLogic.muteColor project.color))
+                                    |> Maybe.map
+                                        (\project ->
+                                            let
+                                                projectColor : Color.Color
+                                                projectColor =
+                                                    ColorLogic.hexToColor project.color
+
+                                                mutedColor : Color.Color
+                                                mutedColor =
+                                                    ColorLogic.muteColor projectColor
+                                            in
+                                            Attr.style "background-color" (ColorLogic.colorToHex mutedColor)
+                                        )
                             )
                         |> Maybe.withDefault (Attr.class "bg-base-200")
 
