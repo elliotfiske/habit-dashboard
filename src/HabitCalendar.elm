@@ -6,6 +6,7 @@ module HabitCalendar exposing
     , deleteTimeEntry
     , emptyCalendar
     , fromTimeEntries
+    , fromTimeEntriesWithColors
     , getMinutesForDay
     , habitCalendarIdToString
     , setEntries
@@ -120,6 +121,44 @@ fromTimeEntries calendarId name zone workspaceId projectId entries =
     , name = name
     , successColor = Color.rgb255 168 85 247 -- purple-500
     , nonzeroColor = Color.rgb255 216 180 254 -- purple-300
+    , weeksShowing = 4
+    , entries = aggregatedEntries
+    , timeEntries = entriesDict
+    , timezone = zone
+    , workspaceId = workspaceId
+    , projectId = projectId
+    }
+
+
+{-| Create a calendar from time entries with custom colors.
+-}
+fromTimeEntriesWithColors :
+    HabitCalendarId
+    -> String
+    -> Zone
+    -> TogglWorkspaceId
+    -> TogglProjectId
+    -> Color
+    -> Color
+    -> List TimeEntry
+    -> HabitCalendar
+fromTimeEntriesWithColors calendarId name zone workspaceId projectId successColor nonzeroColor entries =
+    let
+        entriesDict : SeqDict TimeEntryId TimeEntry
+        entriesDict =
+            List.foldl
+                (\entry acc -> SeqDict.insert entry.id entry acc)
+                SeqDict.empty
+                entries
+
+        aggregatedEntries : Dict Int DayEntry
+        aggregatedEntries =
+            aggregateEntriesByDay zone (SeqDict.values entriesDict)
+    in
+    { id = calendarId
+    , name = name
+    , successColor = successColor
+    , nonzeroColor = nonzeroColor
     , weeksShowing = 4
     , entries = aggregatedEntries
     , timeEntries = entriesDict
