@@ -246,6 +246,7 @@ viewEditCalendar model modalData =
                     [ Html.text "Cancel" ]
                 , Html.button
                     [ Attr.class "btn btn-primary"
+                    , Attr.id "submit-edit-calendar"
                     , Attr.disabled (String.isEmpty modalData.calendarName)
                     , Events.onClick SubmitEditCalendar
                     , Attr.attribute "data-testid" "submit-edit-calendar"
@@ -364,6 +365,7 @@ viewEditCalendarNameInput modalData =
             , Attr.value modalData.calendarName
             , Attr.class "input input-bordered"
             , Events.onInput EditCalendarNameChanged
+            , Attr.id "edit-calendar-name-input"
             , Attr.attribute "data-testid" "edit-calendar-name-input"
             ]
             []

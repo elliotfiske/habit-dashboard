@@ -1,6 +1,7 @@
 module SmokeTests exposing (appTests, main)
 
 import Backend
+import Effect.Browser.Dom as Dom
 import Effect.Lamdera
 import Effect.Test exposing (HttpResponse(..))
 import Effect.Time
@@ -352,6 +353,114 @@ tests =
                         ]
                         >> Test.Html.Query.count (Expect.equal 0)
                     )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Edit calendar updates name"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ Effect.Test.backendUpdate 100
+                    (GotTogglWorkspaces actions.clientId (Ok [ mockWorkspace ]))
+                , Effect.Test.backendUpdate 100
+                    (GotTogglProjects actions.clientId (Ok [ mockProject ]))
+                , Effect.Test.backendUpdate 100
+                    (GotTogglTimeEntries
+                        actions.clientId
+                        mockCalendarInfo
+                        mockWorkspace.id
+                        mockProject.id
+                        Time.utc
+                        (Ok [ mockTimeEntry ])
+                    )
+                , actions.checkView 200
+                    (Test.Html.Query.has [ Test.Html.Selector.text "Cleaning" ])
+                , actions.click 100 (Dom.id "edit-calendar-159657524")
+                , actions.checkView 100
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "edit-calendar-name-input") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.attribute (Html.Attributes.value "Cleaning") ]
+                    )
+                , actions.input 100 (Dom.id "edit-calendar-name-input") "Chores Updated"
+                , actions.click 100 (Dom.id "submit-edit-calendar")
+                , actions.checkView 200
+                    (Test.Html.Query.has [ Test.Html.Selector.text "Chores Updated" ])
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Edit calendar Save button disabled when name is empty"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ Effect.Test.backendUpdate 100
+                    (GotTogglWorkspaces actions.clientId (Ok [ mockWorkspace ]))
+                , Effect.Test.backendUpdate 100
+                    (GotTogglProjects actions.clientId (Ok [ mockProject ]))
+                , Effect.Test.backendUpdate 100
+                    (GotTogglTimeEntries
+                        actions.clientId
+                        mockCalendarInfo
+                        mockWorkspace.id
+                        mockProject.id
+                        Time.utc
+                        (Ok [ mockTimeEntry ])
+                    )
+                , actions.click 100 (Dom.id "edit-calendar-159657524")
+                , actions.input 100 (Dom.id "edit-calendar-name-input") ""
+                , actions.checkView 100
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "submit-edit-calendar") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.disabled True ]
+                    )
+                , actions.input 100 (Dom.id "edit-calendar-name-input") "New Name"
+                , actions.checkView 100
+                    (Test.Html.Query.find
+                        [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "submit-edit-calendar") ]
+                        >> Test.Html.Query.has [ Test.Html.Selector.disabled False ]
+                    )
+                ]
+            )
+        ]
+    , Effect.Test.start
+        "Delete calendar removes it from view"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\actions ->
+                [ Effect.Test.backendUpdate 100
+                    (GotTogglWorkspaces actions.clientId (Ok [ mockWorkspace ]))
+                , Effect.Test.backendUpdate 100
+                    (GotTogglProjects actions.clientId (Ok [ mockProject ]))
+                , Effect.Test.backendUpdate 100
+                    (GotTogglTimeEntries
+                        actions.clientId
+                        mockCalendarInfo
+                        mockWorkspace.id
+                        mockProject.id
+                        Time.utc
+                        (Ok [ mockTimeEntry ])
+                    )
+                , actions.checkView 200
+                    (Test.Html.Query.has [ Test.Html.Selector.text "Cleaning" ])
+                , actions.click 100 (Dom.id "delete-calendar-159657524")
+                , actions.checkView 200
+                    (Test.Html.Query.has [ Test.Html.Selector.text "Example Habit" ])
                 ]
             )
         ]

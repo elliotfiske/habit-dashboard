@@ -97,6 +97,7 @@ viewCalendar now runningEntry calendar =
                     [ Html.text "🔄" ]
                 , Html.button
                     [ Attr.class "btn btn-sm btn-ghost"
+                    , Attr.id ("edit-calendar-" ++ HabitCalendar.habitCalendarIdToString calendar.id)
                     , Events.onClick (OpenEditCalendarModal calendar)
                     , Attr.title "Edit calendar"
                     , Attr.attribute "data-testid" ("edit-calendar-" ++ HabitCalendar.habitCalendarIdToString calendar.id)
@@ -104,6 +105,7 @@ viewCalendar now runningEntry calendar =
                     [ Html.text "✏️" ]
                 , Html.button
                     [ Attr.class "btn btn-sm btn-ghost text-error"
+                    , Attr.id ("delete-calendar-" ++ HabitCalendar.habitCalendarIdToString calendar.id)
                     , Events.onClick (DeleteCalendar calendar.id)
                     , Attr.title "Delete calendar"
                     , Attr.attribute "data-testid" ("delete-calendar-" ++ HabitCalendar.habitCalendarIdToString calendar.id)
