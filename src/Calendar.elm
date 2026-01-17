@@ -3,7 +3,7 @@ module Calendar exposing (view, viewWithTitle)
 {-| Calendar UI component for displaying habit data in a weekly grid.
 -}
 
-import Color
+import ColorLogic
 import DateUtils exposing (DayComparison(..), PointInTime, compareDays, formatMonthDay, mondaysAgo, startOfDay)
 import HabitCalendar exposing (HabitCalendar, getMinutesForDay)
 import Html exposing (Html, div, h2, text)
@@ -220,10 +220,28 @@ cellColors calendar comparison minutes =
 
         _ ->
             if minutes >= 30 then
-                ( Color.toCssString calendar.successColor, "#fff" )
+                let
+                    textColor : String
+                    textColor =
+                        if ColorLogic.isLight calendar.successColor then
+                            "#000"
+
+                        else
+                            "#fff"
+                in
+                ( ColorLogic.colorToHex calendar.successColor, textColor )
 
             else if minutes > 0 then
-                ( Color.toCssString calendar.nonzeroColor, "#000" )
+                let
+                    textColor : String
+                    textColor =
+                        if ColorLogic.isLight calendar.nonzeroColor then
+                            "#000"
+
+                        else
+                            "#fff"
+                in
+                ( ColorLogic.colorToHex calendar.nonzeroColor, textColor )
 
             else
                 ( "oklch(var(--b3))", "oklch(var(--bc))" )
