@@ -8,7 +8,6 @@
         "direct": {
             "NoRedInk/elm-json-decode-pipeline": "1.0.1",
             "TSFoster/elm-uuid": "4.2.0",
-            "avh4/elm-color": "1.0.0",
             "elm/browser": "1.0.2",
             "elm/bytes": "1.0.8",
             "elm/core": "1.0.5",
@@ -20,6 +19,7 @@
             "elm/time": "1.0.0",
             "elm/url": "1.0.0",
             "elm-explorations/test": "2.2.0",
+            "escherlies/elm-color": "1.1.0",
             "ianmackenzie/elm-units": "2.10.0",
             "justinmimbs/time-extra": "1.2.0",
             "lamdera/codecs": "1.0.0",
@@ -49,6 +49,8 @@
     },
     "test-dependencies": {
         "direct": {},
-        "indirect": {}
+        "indirect": {
+            "fredcy/elm-parseint": "2.0.1"
+        }
     }
 }

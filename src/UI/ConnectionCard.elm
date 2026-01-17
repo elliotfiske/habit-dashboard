@@ -57,6 +57,7 @@ view model =
                             [ Html.text "🔄" ]
                         , Html.button
                             [ Attr.class "btn btn-primary"
+                            , Attr.id "create-calendar-button"
                             , Events.onClick OpenCreateCalendarModal
                             , Attr.attribute "data-testid" "create-calendar-button"
                             ]
