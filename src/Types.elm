@@ -15,6 +15,7 @@ module Types exposing
     )
 
 import CalendarDict exposing (CalendarDict)
+import Color exposing (Color)
 import Effect.Browser
 import Effect.Browser.Navigation
 import Effect.Lamdera
@@ -64,6 +65,8 @@ type alias CreateCalendarModal =
     { selectedWorkspace : Maybe TogglWorkspace
     , selectedProject : Maybe TogglProject
     , calendarName : String
+    , successColor : Color
+    , nonzeroColor : Color
     }
 
 
@@ -75,6 +78,8 @@ type alias EditCalendarModal =
     , selectedWorkspace : Toggl.TogglWorkspace
     , selectedProject : Toggl.TogglProject
     , calendarName : String
+    , successColor : Color
+    , nonzeroColor : Color
     }
 
 
@@ -120,12 +125,16 @@ type FrontendMsg
     | SelectWorkspace TogglWorkspace
     | SelectProject TogglProject
     | CalendarNameChanged String
+    | SuccessColorChanged String
+    | NonzeroColorChanged String
     | SubmitCreateCalendar
       -- Edit calendar actions
     | OpenEditCalendarModal HabitCalendar.HabitCalendar
     | EditCalendarSelectWorkspace Toggl.TogglWorkspace
     | EditCalendarSelectProject Toggl.TogglProject
     | EditCalendarNameChanged String
+    | EditSuccessColorChanged String
+    | EditNonzeroColorChanged String
     | SubmitEditCalendar
     | DeleteCalendar HabitCalendar.HabitCalendarId
       -- Stop timer actions
@@ -143,7 +152,7 @@ type ToBackend
     | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId Toggl.TogglProjectId String String Zone -- calendarInfo, workspaceId, projectId, startDate, endDate, userZone
     | StopTogglTimer TogglWorkspaceId TimeEntryId
     | ClearWebhookEventsRequest
-    | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId -- calendarId, name, workspaceId, projectId
+    | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId Color Color -- calendarId, name, workspaceId, projectId, successColor, nonzeroColor
     | DeleteCalendarRequest HabitCalendar.HabitCalendarId
 
 
@@ -152,6 +161,8 @@ type ToBackend
 type alias CalendarInfo =
     { calendarId : HabitCalendarId
     , calendarName : String
+    , successColor : Color
+    , nonzeroColor : Color
     }
 
 
@@ -164,6 +175,7 @@ type BackendMsg
     | GotTogglTimeEntries Effect.Lamdera.ClientId CalendarInfo TogglWorkspaceId TogglProjectId Zone (Result Toggl.TogglApiError (List TimeEntry))
     | GotWebhookValidation (Result Http.Error ())
     | GotStopTimerResponse Effect.Lamdera.ClientId (Result Toggl.TogglApiError ())
+    | BroadcastRunningEntry RunningEntry -- Used for testing and webhook simulation
 
 
 type ToFrontend
