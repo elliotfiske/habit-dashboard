@@ -177,17 +177,6 @@ type alias TimeEntry =
     }
 
 
-timeEntryDecoder : Decoder TimeEntry
-timeEntryDecoder =
-    D.succeed TimeEntry
-        |> DP.required "id" (D.map TimeEntryId D.int)
-        |> DP.optional "project_id" (D.nullable (D.map TogglProjectId D.int)) Nothing
-        |> DP.optional "description" (D.nullable D.string) Nothing
-        |> DP.required "start" iso8601Decoder
-        |> DP.optional "stop" (D.nullable iso8601Decoder) Nothing
-        |> DP.required "seconds" D.int
-
-
 {-| Decode ISO8601 datetime string to Posix.
 Uses the rtfeldman/elm-iso8601-date-strings package.
 -}
@@ -210,17 +199,44 @@ iso8601Decoder =
 
 
 {-| Response from the Toggl Reports API time entries search.
-The API returns a list of results, each containing a list of time entries.
+The API returns a list of grouped results. Each group has:
+- description, project\_id at the group level
+- time\_entries array with individual entry details (id, seconds, start, stop)
 -}
 type alias TimeEntriesSearchResult =
     { timeEntries : List TimeEntry
     }
 
 
+{-| Decode a single time entry group from the Reports API.
+Extracts description and project\_id from group level and applies to each entry.
+-}
 timeEntriesSearchResultDecoder : Decoder TimeEntriesSearchResult
 timeEntriesSearchResultDecoder =
-    D.succeed TimeEntriesSearchResult
-        |> DP.required "time_entries" (D.list timeEntryDecoder)
+    D.succeed
+        (\description projectId innerEntries ->
+            { timeEntries =
+                List.map
+                    (\entry -> { entry | description = description, projectId = projectId })
+                    innerEntries
+            }
+        )
+        |> DP.optional "description" (D.nullable D.string) Nothing
+        |> DP.optional "project_id" (D.nullable (D.map TogglProjectId D.int)) Nothing
+        |> DP.required "time_entries" (D.list innerTimeEntryDecoder)
+
+
+{-| Decode the inner time entry (without description/project\_id which come from group).
+-}
+innerTimeEntryDecoder : Decoder TimeEntry
+innerTimeEntryDecoder =
+    D.succeed TimeEntry
+        |> DP.required "id" (D.map TimeEntryId D.int)
+        |> DP.hardcoded Nothing -- projectId comes from group level
+        |> DP.hardcoded Nothing -- description comes from group level
+        |> DP.required "start" iso8601Decoder
+        |> DP.optional "stop" (D.nullable iso8601Decoder) Nothing
+        |> DP.required "seconds" D.int
 
 
 {-| Decode the full response from time entries search.

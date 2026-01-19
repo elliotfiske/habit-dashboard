@@ -188,8 +188,8 @@ update msg model =
                 Ok entries ->
                     let
                         -- Create a calendar from the time entries with custom colors
-                        newCalendar : HabitCalendar.HabitCalendar
-                        newCalendar =
+                        baseCalendar : HabitCalendar.HabitCalendar
+                        baseCalendar =
                             HabitCalendar.fromTimeEntriesWithColors
                                 calendarInfo.calendarId
                                 calendarInfo.calendarName
@@ -199,6 +199,11 @@ update msg model =
                                 calendarInfo.successColor
                                 calendarInfo.nonzeroColor
                                 entries
+
+                        -- Set the isOrangetheory flag from calendarInfo
+                        newCalendar : HabitCalendar.HabitCalendar
+                        newCalendar =
+                            { baseCalendar | isOrangetheory = calendarInfo.isOrangetheory }
 
                         -- Update the calendars dict
                         updatedCalendars : CalendarDict.CalendarDict
@@ -329,7 +334,7 @@ updateFromFrontend _ clientId msg model =
             , Effect.Lamdera.broadcast WebhookEventsCleared
             )
 
-        UpdateCalendar calendarId newName newWorkspaceId newProjectId newSuccessColor newNonzeroColor ->
+        UpdateCalendar calendarId newName newWorkspaceId newProjectId newSuccessColor newNonzeroColor newIsOrangetheory ->
             case CalendarDict.get calendarId model.calendars of
                 Just existingCalendar ->
                     let
@@ -346,6 +351,7 @@ updateFromFrontend _ clientId msg model =
                                 , projectId = newProjectId
                                 , successColor = newSuccessColor
                                 , nonzeroColor = newNonzeroColor
+                                , isOrangetheory = newIsOrangetheory
                             }
 
                         -- If project changed, clear entries (will re-fetch)

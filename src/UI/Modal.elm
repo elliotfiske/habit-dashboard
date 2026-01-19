@@ -59,6 +59,7 @@ viewCreateCalendar model modalData =
                 , onSuccessChange = SuccessColorChanged
                 , onNonzeroChange = NonzeroColorChanged
                 }
+            , viewOrangetheoryCheckbox modalData.isOrangetheory OrangetheoryToggled
             , Html.div [ Attr.class "flex justify-end gap-2 mt-6" ]
                 [ Html.button
                     [ Attr.class "btn"
@@ -300,6 +301,7 @@ viewEditCalendar model modalData =
                 , onSuccessChange = EditSuccessColorChanged
                 , onNonzeroChange = EditNonzeroColorChanged
                 }
+            , viewOrangetheoryCheckbox modalData.isOrangetheory EditOrangetheoryToggled
             , Html.div [ Attr.class "flex justify-end gap-2 mt-6" ]
                 [ Html.button
                     [ Attr.class "btn"
@@ -431,4 +433,24 @@ viewEditCalendarNameInput modalData =
             , Attr.attribute "data-testid" "edit-calendar-name-input"
             ]
             []
+        ]
+
+
+{-| View the Orangetheory tracking checkbox.
+-}
+viewOrangetheoryCheckbox : Bool -> (Bool -> FrontendMsg) -> Html FrontendMsg
+viewOrangetheoryCheckbox isChecked onToggle =
+    Html.div [ Attr.class "form-control mb-4" ]
+        [ Html.label [ Attr.class "label cursor-pointer justify-start gap-3" ]
+            [ Html.input
+                [ Attr.type_ "checkbox"
+                , Attr.checked isChecked
+                , Attr.class "checkbox checkbox-warning"
+                , Events.onCheck onToggle
+                , Attr.attribute "data-testid" "orangetheory-checkbox"
+                ]
+                []
+            , Html.span [ Attr.class "label-text" ]
+                [ Html.text "Track as Orangetheory (8 workouts/month)" ]
+            ]
         ]

@@ -15,6 +15,7 @@ import HabitCalendar exposing (HabitCalendar, HabitCalendarId(..))
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Html.Events as Events
+import OrangetheoryLogic
 import Toggl
 import Types exposing (FrontendModel, FrontendMsg(..), RunningEntry)
 
@@ -113,5 +114,28 @@ viewCalendar now runningEntry calendar =
                     [ Html.text "🗑️" ]
                 ]
             ]
+        , viewOrangetheoryCounter now calendar
         , Calendar.view now runningEntry calendar
         ]
+
+
+{-| Display the Orangetheory workout counter if enabled.
+-}
+viewOrangetheoryCounter : PointInTime -> HabitCalendar -> Html FrontendMsg
+viewOrangetheoryCounter now calendar =
+    if calendar.isOrangetheory then
+        let
+            count : Int
+            count =
+                OrangetheoryLogic.countWorkoutsInPeriod now calendar
+        in
+        Html.div [ Attr.class "text-center mb-4" ]
+            [ Html.span
+                [ Attr.class "text-3xl font-bold text-orange-500"
+                , Attr.attribute "data-testid" "orangetheory-counter"
+                ]
+                [ Html.text (String.fromInt count ++ "/" ++ String.fromInt OrangetheoryLogic.goal) ]
+            ]
+
+    else
+        Html.text ""

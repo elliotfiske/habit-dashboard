@@ -92,6 +92,58 @@ mockCalendarInfo =
     , calendarName = "Cleaning"
     , successColor = "#805AD5"
     , nonzeroColor = "#D8B4FE"
+    , isOrangetheory = False
+    }
+
+
+{-| Mock calendar info for Orangetheory tracking.
+-}
+mockOrangetheoryCalendarInfo : Types.CalendarInfo
+mockOrangetheoryCalendarInfo =
+    { calendarId = HabitCalendar.HabitCalendarId "159881404"
+    , calendarName = "Exercise"
+    , successColor = "#2da608"
+    , nonzeroColor = "#82f75f"
+    , isOrangetheory = True
+    }
+
+
+{-| Mock time entry with Orangetheory in description.
+-}
+mockOrangetheoryEntry1 : Toggl.TimeEntry
+mockOrangetheoryEntry1 =
+    { id = Toggl.TimeEntryId 1001
+    , projectId = Just (Toggl.TogglProjectId 159881404)
+    , description = Just "Orangetheory workout"
+    , start = Time.millisToPosix (january1st2026 + (2 * 24 * 60 * 60 * 1000))
+    , stop = Just (Time.millisToPosix (january1st2026 + (2 * 24 * 60 * 60 * 1000) + (60 * 60 * 1000)))
+    , duration = 3600
+    }
+
+
+{-| Second mock Orangetheory entry on a different day.
+-}
+mockOrangetheoryEntry2 : Toggl.TimeEntry
+mockOrangetheoryEntry2 =
+    { id = Toggl.TimeEntryId 1002
+    , projectId = Just (Toggl.TogglProjectId 159881404)
+    , description = Just "Orangetheory class"
+    , start = Time.millisToPosix (january1st2026 + (4 * 24 * 60 * 60 * 1000))
+    , stop = Just (Time.millisToPosix (january1st2026 + (4 * 24 * 60 * 60 * 1000) + (60 * 60 * 1000)))
+    , duration = 3600
+    }
+
+
+{-| Mock entry without Orangetheory in description (should not count).
+-}
+mockNonOrangetheoryEntry : Toggl.TimeEntry
+mockNonOrangetheoryEntry =
+    { id = Toggl.TimeEntryId 1003
+    , projectId = Just (Toggl.TogglProjectId 159881404)
+    , description = Just "Running"
+    , start = Time.millisToPosix (january1st2026 + (6 * 24 * 60 * 60 * 1000))
+    , stop = Just (Time.millisToPosix (january1st2026 + (6 * 24 * 60 * 60 * 1000) + (30 * 60 * 1000)))
+    , duration = 1800
     }
 
 
@@ -136,28 +188,12 @@ encodeProject project =
         ]
 
 
-{-| Encode a time entry to JSON (matches Toggl Reports API response format).
+{-| Encode inner time entry (id, seconds, start, stop only - description/project at group level).
 -}
-encodeTimeEntry : Toggl.TimeEntry -> E.Value
-encodeTimeEntry entry =
+encodeInnerTimeEntry : Toggl.TimeEntry -> E.Value
+encodeInnerTimeEntry entry =
     E.object
         [ ( "id", E.int (Toggl.timeEntryIdToInt entry.id) )
-        , ( "project_id"
-          , case entry.projectId of
-                Just pid ->
-                    E.int (Toggl.togglProjectIdToInt pid)
-
-                Nothing ->
-                    E.null
-          )
-        , ( "description"
-          , case entry.description of
-                Just desc ->
-                    E.string desc
-
-                Nothing ->
-                    E.null
-          )
         , ( "start", E.string (Iso8601.fromTime entry.start) )
         , ( "stop"
           , case entry.stop of
@@ -171,16 +207,39 @@ encodeTimeEntry entry =
         ]
 
 
+{-| Encode a time entry group in the Reports API search format.
+The actual API puts description and project\_id at the group level, not inside time\_entries.
+-}
+encodeTimeEntryGroup : Toggl.TimeEntry -> E.Value
+encodeTimeEntryGroup entry =
+    E.object
+        [ ( "description"
+          , case entry.description of
+                Just desc ->
+                    E.string desc
+
+                Nothing ->
+                    E.null
+          )
+        , ( "project_id"
+          , case entry.projectId of
+                Just pid ->
+                    E.int (Toggl.togglProjectIdToInt pid)
+
+                Nothing ->
+                    E.null
+          )
+        , ( "time_entries", E.list encodeInnerTimeEntry [ entry ] )
+        ]
+
+
 {-| Encode time entries in the Reports API search format.
-The API returns: [{ "time\_entries": [...] }][{ "time_entries": [...] }]
+The API returns: [{ description, project\_id, time\_entries: [...] }, ...]
+Each entry becomes its own group with description at the top level.
 -}
 encodeTimeEntriesSearchResponse : List Toggl.TimeEntry -> E.Value
 encodeTimeEntriesSearchResponse entries =
-    E.list identity
-        [ E.object
-            [ ( "time_entries", E.list encodeTimeEntry entries )
-            ]
-        ]
+    E.list encodeTimeEntryGroup entries
 
 
 {-| Create HTTP metadata for a successful response.
@@ -725,6 +784,31 @@ tests =
                 (Test.Html.Query.find
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "day-2026-01-01") ]
                     >> Test.Html.Query.has [ Test.Html.Selector.text "30" ]
+                )
+            ]
+        )
+    , standardTest "Orangetheory counter shows correct count based on description filter"
+        (\actions ->
+            [ -- Setup: create Orangetheory calendar with mixed entries
+              -- (2 with "Orangetheory" in description, 1 without)
+              Effect.Test.backendUpdate 100
+                (GotTogglWorkspaces actions.clientId (Ok [ mockWorkspace ]))
+            , Effect.Test.backendUpdate 100
+                (GotTogglProjects actions.clientId (Ok [ mockProject ]))
+            , Effect.Test.backendUpdate 100
+                (GotTogglTimeEntries
+                    actions.clientId
+                    mockOrangetheoryCalendarInfo
+                    mockWorkspace.id
+                    mockProject.id
+                    Time.utc
+                    (Ok [ mockOrangetheoryEntry1, mockOrangetheoryEntry2, mockNonOrangetheoryEntry ])
+                )
+            , -- Verify the Orangetheory counter shows "2/8" (only entries with "Orangetheory" in description)
+              actions.checkView 200
+                (Test.Html.Query.find
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "orangetheory-counter") ]
+                    >> Test.Html.Query.has [ Test.Html.Selector.text "2/8" ]
                 )
             ]
         )

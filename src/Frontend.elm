@@ -137,9 +137,17 @@ update msg model =
                                     "#3B82F6"
                             in
                             ( defaultBlue
-                            , ColorLogic.colorToHex (ColorLogic.muteColor (ColorLogic.hexToColor defaultBlue))
-                              -- simplify this with pipes
+                            , defaultBlue
+                                |> ColorLogic.hexToColor
+                                |> ColorLogic.muteColor
+                                |> ColorLogic.colorToHex
                             )
+
+                isOrangetheory : Bool
+                isOrangetheory =
+                    existingCalendar
+                        |> Maybe.map .isOrangetheory
+                        |> Maybe.withDefault False
 
                 calendarInfo : Types.CalendarInfo
                 calendarInfo =
@@ -147,6 +155,7 @@ update msg model =
                     , calendarName = calendarName
                     , successColor = successColor
                     , nonzeroColor = nonzeroColor
+                    , isOrangetheory = isOrangetheory
                     }
             in
             ( model
@@ -167,6 +176,7 @@ update msg model =
                         , calendarName = ""
                         , successColor = ColorLogic.colorToHex defaultBlue
                         , nonzeroColor = ColorLogic.colorToHex (ColorLogic.muteColor defaultBlue)
+                        , isOrangetheory = False
                         }
               }
             , Command.none
@@ -271,6 +281,20 @@ update msg model =
                 _ ->
                     ( model, Command.none )
 
+        OrangetheoryToggled isChecked ->
+            case model.modalState of
+                ModalCreateCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalCreateCalendar
+                                { modalData | isOrangetheory = isChecked }
+                      }
+                    , Command.none
+                    )
+
+                _ ->
+                    ( model, Command.none )
+
         SubmitCreateCalendar ->
             case model.modalState of
                 ModalCreateCalendar modalData ->
@@ -287,6 +311,7 @@ update msg model =
                                     , calendarName = modalData.calendarName
                                     , successColor = modalData.successColor
                                     , nonzeroColor = modalData.nonzeroColor
+                                    , isOrangetheory = modalData.isOrangetheory
                                     }
                             in
                             ( { model | modalState = ModalClosed }
@@ -357,6 +382,7 @@ update msg model =
                                 , calendarName = calendar.name
                                 , successColor = calendar.successColor
                                 , nonzeroColor = calendar.nonzeroColor
+                                , isOrangetheory = calendar.isOrangetheory
                                 }
                       }
                     , Command.none
@@ -445,6 +471,20 @@ update msg model =
                 _ ->
                     ( model, Command.none )
 
+        EditOrangetheoryToggled isChecked ->
+            case model.modalState of
+                ModalEditCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalEditCalendar
+                                { modalData | isOrangetheory = isChecked }
+                      }
+                    , Command.none
+                    )
+
+                _ ->
+                    ( model, Command.none )
+
         SubmitEditCalendar ->
             case model.modalState of
                 ModalEditCalendar modalData ->
@@ -457,6 +497,7 @@ update msg model =
                             modalData.selectedProject.id
                             modalData.successColor
                             modalData.nonzeroColor
+                            modalData.isOrangetheory
                         )
                     )
 

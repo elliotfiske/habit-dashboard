@@ -66,6 +66,7 @@ type alias CreateCalendarModal =
     , calendarName : String
     , successColor : String
     , nonzeroColor : String
+    , isOrangetheory : Bool
     }
 
 
@@ -79,6 +80,7 @@ type alias EditCalendarModal =
     , calendarName : String
     , successColor : String
     , nonzeroColor : String
+    , isOrangetheory : Bool
     }
 
 
@@ -126,6 +128,7 @@ type FrontendMsg
     | CalendarNameChanged String
     | SuccessColorChanged String
     | NonzeroColorChanged String
+    | OrangetheoryToggled Bool
     | SubmitCreateCalendar
       -- Edit calendar actions
     | OpenEditCalendarModal HabitCalendar.HabitCalendar
@@ -134,6 +137,7 @@ type FrontendMsg
     | EditCalendarNameChanged String
     | EditSuccessColorChanged String
     | EditNonzeroColorChanged String
+    | EditOrangetheoryToggled Bool
     | SubmitEditCalendar
     | DeleteCalendar HabitCalendar.HabitCalendarId
       -- Stop timer actions
@@ -151,7 +155,7 @@ type ToBackend
     | FetchTogglTimeEntries CalendarInfo TogglWorkspaceId Toggl.TogglProjectId String String Zone -- calendarInfo, workspaceId, projectId, startDate, endDate, userZone
     | StopTogglTimer TogglWorkspaceId TimeEntryId
     | ClearWebhookEventsRequest
-    | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId String String -- calendarId, name, workspaceId, projectId, successColor, nonzeroColor
+    | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId String String Bool -- calendarId, name, workspaceId, projectId, successColor, nonzeroColor, isOrangetheory
     | DeleteCalendarRequest HabitCalendar.HabitCalendarId
 
 
@@ -162,6 +166,7 @@ type alias CalendarInfo =
     , calendarName : String
     , successColor : String
     , nonzeroColor : String
+    , isOrangetheory : Bool
     }
 
 

@@ -52,6 +52,7 @@ type alias HabitCalendar =
     , timezone : Zone -- User's timezone for aggregating entries by day
     , workspaceId : TogglWorkspaceId -- Toggl workspace this calendar belongs to
     , projectId : TogglProjectId -- Toggl project this calendar tracks
+    , isOrangetheory : Bool -- Track 8 workouts/month with 13th-12th billing cycle
     }
 
 
@@ -77,6 +78,7 @@ emptyCalendar id name zone workspaceId projectId =
     , timezone = zone
     , workspaceId = workspaceId
     , projectId = projectId
+    , isOrangetheory = False
     }
 
 
@@ -126,6 +128,7 @@ fromTimeEntries calendarId name zone workspaceId projectId entries =
     , timezone = zone
     , workspaceId = workspaceId
     , projectId = projectId
+    , isOrangetheory = False
     }
 
 
@@ -164,6 +167,7 @@ fromTimeEntriesWithColors calendarId name zone workspaceId projectId successColo
     , timezone = zone
     , workspaceId = workspaceId
     , projectId = projectId
+    , isOrangetheory = False
     }
 
 
