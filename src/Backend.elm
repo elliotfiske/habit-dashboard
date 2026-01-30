@@ -149,7 +149,8 @@ update msg model =
                     )
 
                 Err apiError ->
-                    ( model
+                    -- Clear cached workspaces so new clients don't see stale "Connected" state
+                    ( { model | togglWorkspaces = [], togglProjects = [] }
                     , Effect.Lamdera.sendToFrontend clientId
                         (TogglWorkspacesReceived (Err (Toggl.togglApiErrorToString apiError)))
                     )

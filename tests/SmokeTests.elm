@@ -53,6 +53,24 @@ mockProject =
     }
 
 
+mockProjectCoding : Toggl.TogglProject
+mockProjectCoding =
+    { id = Toggl.TogglProjectId 159657525
+    , workspaceId = Toggl.TogglWorkspaceId 12345
+    , name = "Coding"
+    , color = "#0b83d9"
+    }
+
+
+mockProjectReading : Toggl.TogglProject
+mockProjectReading =
+    { id = Toggl.TogglProjectId 159657526
+    , workspaceId = Toggl.TogglWorkspaceId 12345
+    , name = "Reading"
+    , color = "#06a893"
+    }
+
+
 mockTimeEntry : Toggl.TimeEntry
 mockTimeEntry =
     { id = Toggl.TimeEntryId 999
@@ -809,6 +827,81 @@ tests =
                 (Test.Html.Query.find
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "orangetheory-counter") ]
                     >> Test.Html.Query.has [ Test.Html.Selector.text "2/8" ]
+                )
+            ]
+        )
+    , Effect.Test.start
+        "New client sees 'Not connected' after API failure (not stale 'Connected' state)"
+        (Effect.Time.millisToPosix january1st2026)
+        config
+        [ Effect.Test.connectFrontend
+            1000
+            (Effect.Lamdera.sessionIdFromString "sessionId0")
+            "/"
+            { width = 800, height = 600 }
+            (\clientA ->
+                [ -- First client connects successfully - backend caches workspaces
+                  Effect.Test.backendUpdate 100
+                    (GotTogglWorkspaces clientA.clientId (Ok [ mockWorkspace ]))
+                , -- Verify clientA is connected
+                  clientA.checkView 200
+                    (Test.Html.Query.has [ Test.Html.Selector.text "Connected" ])
+                , -- API key gets rotated, next request fails with 403
+                  Effect.Test.backendUpdate 100
+                    (GotTogglWorkspaces clientA.clientId
+                        (Err (Toggl.HttpError (Effect.Http.BadStatus 403)))
+                    )
+                , -- Verify clientA shows error
+                  clientA.checkView 200
+                    (Test.Html.Query.has [ Test.Html.Selector.text "Connection error" ])
+                , -- Now connect a NEW client (simulates page refresh or new browser)
+                  -- The bug: backend still has cached workspaces, so it sends "Connected" state
+                  Effect.Test.connectFrontend 0
+                    (Effect.Lamdera.sessionIdFromString "sessionId1")
+                    "/"
+                    { width = 800, height = 600 }
+                    (\clientB ->
+                        [ -- clientB should NOT see "Connected" from stale cache
+                          -- It should see "Not connected" since the API key is invalid
+                          clientB.checkView 500
+                            (Test.Html.Query.has [ Test.Html.Selector.text "Not connected" ])
+                        ]
+                    )
+                ]
+            )
+        ]
+    , standardTest "Project filter filters displayed projects by name"
+        (\actions ->
+            [ -- Setup: send workspaces and multiple projects
+              Effect.Test.backendUpdate 100
+                (GotTogglWorkspaces actions.clientId (Ok [ mockWorkspace ]))
+            , Effect.Test.backendUpdate 100
+                (GotTogglProjects actions.clientId (Ok [ mockProject, mockProjectCoding, mockProjectReading ]))
+            , -- Open create calendar modal
+              actions.click 100 (Dom.id "create-calendar-button")
+            , -- Select workspace to show projects
+              actions.click 100 (Dom.id "workspace-select-12345")
+            , -- Verify all 3 projects are visible initially
+              actions.checkView 100
+                (Test.Html.Query.has [ Test.Html.Selector.text "Chores" ])
+            , actions.checkView 100
+                (Test.Html.Query.has [ Test.Html.Selector.text "Coding" ])
+            , actions.checkView 100
+                (Test.Html.Query.has [ Test.Html.Selector.text "Reading" ])
+            , -- Type "Cod" in the filter input
+              actions.input 100 (Dom.id "project-filter-input") "Cod"
+            , -- Now only "Coding" should be visible, "Chores" and "Reading" should be hidden
+              actions.checkView 100
+                (Test.Html.Query.has [ Test.Html.Selector.text "Coding" ])
+            , actions.checkView 100
+                (Test.Html.Query.findAll
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "project-159657524") ]
+                    >> Test.Html.Query.count (Expect.equal 0)
+                )
+            , actions.checkView 100
+                (Test.Html.Query.findAll
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "project-159657526") ]
+                    >> Test.Html.Query.count (Expect.equal 0)
                 )
             ]
         )
