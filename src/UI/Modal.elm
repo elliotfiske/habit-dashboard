@@ -163,30 +163,78 @@ viewProjectSelector model modalData =
                 ]
 
         Just _ ->
-            Html.div [ Attr.class "form-control mb-4" ]
-                [ Html.label [ Attr.class "label" ]
-                    [ Html.span [ Attr.class "label-text" ] [ Html.text "Select Project" ] ]
-                , if model.projectsLoading then
-                    Html.div [ Attr.class "flex items-center gap-2" ]
-                        [ Html.span [ Attr.class "loading loading-spinner loading-sm" ] []
-                        , Html.text "Loading projects..."
-                        ]
+            viewProjectSelectorWithFilter
+                { projects = model.availableProjects
+                , isLoading = model.projectsLoading
+                , filterText = modalData.projectFilter
+                , selectedProject = modalData.selectedProject
+                , onSelectProject = SelectProject
+                }
 
-                  else if List.isEmpty model.availableProjects then
+
+{-| Shared project selector with filter input.
+Used by both Create and Edit calendar modals.
+-}
+viewProjectSelectorWithFilter :
+    { projects : List TogglProject
+    , isLoading : Bool
+    , filterText : String
+    , selectedProject : Maybe TogglProject
+    , onSelectProject : TogglProject -> FrontendMsg
+    }
+    -> Html FrontendMsg
+viewProjectSelectorWithFilter config =
+    Html.div [ Attr.class "form-control mb-4" ]
+        [ Html.label [ Attr.class "label" ]
+            [ Html.span [ Attr.class "label-text" ] [ Html.text "Select Project" ] ]
+        , if config.isLoading then
+            Html.div [ Attr.class "flex items-center gap-2" ]
+                [ Html.span [ Attr.class "loading loading-spinner loading-sm" ] []
+                , Html.text "Loading projects..."
+                ]
+
+          else if List.isEmpty config.projects then
+            Html.p [ Attr.class "text-sm text-base-content/60" ]
+                [ Html.text "No projects found in this workspace" ]
+
+          else
+            let
+                filteredProjects : List TogglProject
+                filteredProjects =
+                    if String.isEmpty config.filterText then
+                        config.projects
+
+                    else
+                        List.filter
+                            (\p -> String.contains (String.toLower config.filterText) (String.toLower p.name))
+                            config.projects
+            in
+            Html.div []
+                [ Html.input
+                    [ Attr.type_ "text"
+                    , Attr.placeholder "Filter projects..."
+                    , Attr.value config.filterText
+                    , Attr.class "input input-bordered input-sm w-full mb-2"
+                    , Attr.id "project-filter-input"
+                    , Events.onInput UpdateProjectFilter
+                    , Attr.attribute "data-testid" "project-filter-input"
+                    ]
+                    []
+                , if List.isEmpty filteredProjects then
                     Html.p [ Attr.class "text-sm text-base-content/60" ]
-                        [ Html.text "No projects found in this workspace" ]
+                        [ Html.text "No matching projects" ]
 
                   else
                     Html.div [ Attr.class "flex flex-wrap gap-2 max-h-48 overflow-y-auto" ]
-                        (List.map (projectButton modalData.selectedProject) model.availableProjects)
+                        (List.map (projectButtonWith config.selectedProject config.onSelectProject) filteredProjects)
                 ]
+        ]
 
 
-{-| Button for selecting a project.
-Highlighted in primary color when selected.
+{-| Button for selecting a project with configurable click handler.
 -}
-projectButton : Maybe TogglProject -> TogglProject -> Html FrontendMsg
-projectButton selectedProject project =
+projectButtonWith : Maybe TogglProject -> (TogglProject -> FrontendMsg) -> TogglProject -> Html FrontendMsg
+projectButtonWith selectedProject onSelect project =
     let
         isSelected : Bool
         isSelected =
@@ -208,7 +256,7 @@ projectButton selectedProject project =
                    )
             )
         , Attr.id ("project-select-" ++ Toggl.togglProjectIdToString project.id)
-        , Events.onClick (SelectProject project)
+        , Events.onClick (onSelect project)
         , Attr.attribute "data-testid" ("project-" ++ Toggl.togglProjectIdToString project.id)
         ]
         [ Html.text project.name ]
@@ -372,48 +420,13 @@ editWorkspaceButton selectedWorkspace workspace =
 -}
 viewEditProjectSelector : FrontendModel -> EditCalendarModal -> Html FrontendMsg
 viewEditProjectSelector model modalData =
-    Html.div [ Attr.class "form-control mb-4" ]
-        [ Html.label [ Attr.class "label" ]
-            [ Html.span [ Attr.class "label-text" ] [ Html.text "Project" ] ]
-        , if model.projectsLoading then
-            Html.div [ Attr.class "flex items-center gap-2" ]
-                [ Html.span [ Attr.class "loading loading-spinner loading-sm" ] []
-                , Html.text "Loading projects..."
-                ]
-
-          else if List.isEmpty model.availableProjects then
-            Html.p [ Attr.class "text-sm text-base-content/60" ]
-                [ Html.text "No projects found" ]
-
-          else
-            Html.div [ Attr.class "flex flex-wrap gap-2 max-h-48 overflow-y-auto" ]
-                (List.map (editProjectButton modalData.selectedProject) model.availableProjects)
-        ]
-
-
-{-| Button for selecting a project in edit modal.
--}
-editProjectButton : TogglProject -> TogglProject -> Html FrontendMsg
-editProjectButton selectedProject project =
-    let
-        isSelected : Bool
-        isSelected =
-            selectedProject.id == project.id
-    in
-    Html.button
-        [ Attr.class
-            ("btn btn-sm "
-                ++ (if isSelected then
-                        "btn-primary"
-
-                    else
-                        "btn-outline"
-                   )
-            )
-        , Events.onClick (EditCalendarSelectProject project)
-        , Attr.attribute "data-testid" ("edit-project-" ++ Toggl.togglProjectIdToString project.id)
-        ]
-        [ Html.text project.name ]
+    viewProjectSelectorWithFilter
+        { projects = model.availableProjects
+        , isLoading = model.projectsLoading
+        , filterText = modalData.projectFilter
+        , selectedProject = Just modalData.selectedProject
+        , onSelectProject = EditCalendarSelectProject
+        }
 
 
 {-| View calendar name input for edit modal.

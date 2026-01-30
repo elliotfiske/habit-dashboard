@@ -177,6 +177,7 @@ update msg model =
                         , successColor = ColorLogic.colorToHex defaultBlue
                         , nonzeroColor = ColorLogic.colorToHex (ColorLogic.muteColor defaultBlue)
                         , isOrangetheory = False
+                        , projectFilter = ""
                         }
               }
             , Command.none
@@ -383,6 +384,7 @@ update msg model =
                                 , successColor = calendar.successColor
                                 , nonzeroColor = calendar.nonzeroColor
                                 , isOrangetheory = calendar.isOrangetheory
+                                , projectFilter = ""
                                 }
                       }
                     , Command.none
@@ -510,6 +512,29 @@ update msg model =
             ( model
             , Effect.Lamdera.sendToBackend (DeleteCalendarRequest calendarId)
             )
+
+        UpdateProjectFilter filterText ->
+            case model.modalState of
+                ModalCreateCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalCreateCalendar
+                                { modalData | projectFilter = filterText }
+                      }
+                    , Command.none
+                    )
+
+                ModalEditCalendar modalData ->
+                    ( { model
+                        | modalState =
+                            ModalEditCalendar
+                                { modalData | projectFilter = filterText }
+                      }
+                    , Command.none
+                    )
+
+                ModalClosed ->
+                    ( model, Command.none )
 
 
 updateFromBackend : ToFrontend -> Model -> ( Model, Command FrontendOnly ToBackend FrontendMsg )

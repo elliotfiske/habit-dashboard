@@ -67,6 +67,7 @@ type alias CreateCalendarModal =
     , successColor : String
     , nonzeroColor : String
     , isOrangetheory : Bool
+    , projectFilter : String
     }
 
 
@@ -81,6 +82,7 @@ type alias EditCalendarModal =
     , successColor : String
     , nonzeroColor : String
     , isOrangetheory : Bool
+    , projectFilter : String
     }
 
 
@@ -140,6 +142,8 @@ type FrontendMsg
     | EditOrangetheoryToggled Bool
     | SubmitEditCalendar
     | DeleteCalendar HabitCalendar.HabitCalendarId
+      -- Project filter (shared between Create and Edit modals)
+    | UpdateProjectFilter String
       -- Stop timer actions
     | StopRunningTimer
     | DismissStopTimerError
