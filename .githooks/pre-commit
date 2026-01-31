@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# Pre-commit hook to prevent committing API keys in Env.elm
+# Compares Env.elm against Env-Clean.elm reference file
+
+ENV_FILE="src/Env.elm"
+CLEAN_FILE="Env-Clean.elm"
+
+# Check if both files exist
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Warning: $ENV_FILE not found, skipping check"
+    exit 0
+fi
+
+if [ ! -f "$CLEAN_FILE" ]; then
+    echo "Error: $CLEAN_FILE not found!"
+    echo "Create it by copying a clean version of Env.elm (with empty API key)"
+    exit 1
+fi
+
+# Check if Env.elm is staged for commit
+if git diff --cached --name-only | grep -q "^src/Env.elm$"; then
+    # Compare the staged version of Env.elm with Env-Clean.elm
+    if ! git diff --cached --exit-code "$ENV_FILE" -- "$CLEAN_FILE" > /dev/null 2>&1; then
+        # Files are different - check if the staged Env.elm matches clean
+        STAGED_CONTENT=$(git show :src/Env.elm 2>/dev/null)
+        CLEAN_CONTENT=$(cat "$CLEAN_FILE")
+
+        if [ "$STAGED_CONTENT" != "$CLEAN_CONTENT" ]; then
+            echo "========================================"
+            echo "ERROR: Env.elm contains changes!"
+            echo "========================================"
+            echo ""
+            echo "You may have accidentally staged your API key."
+            echo "Env.elm must match Env-Clean.elm when committing."
+            echo ""
+            echo "To fix: git restore --staged src/Env.elm"
+            echo "========================================"
+            exit 1
+        fi
+    fi
+fi
+
+exit 0
