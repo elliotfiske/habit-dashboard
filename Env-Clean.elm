@@ -1,4 +1,4 @@
-module Env exposing (Mode(..), mode, togglApiKey)
+module Env exposing (Mode(..), codaApiKey, mode, togglApiKey)
 
 -- The Env.elm file is for per-environment configuration.
 -- See https://dashboard.lamdera.app/docs/environment for more info.
@@ -22,4 +22,14 @@ This actual value must not be committed to the repo. However, it must be set for
 -}
 togglApiKey : String
 togglApiKey =
+    ""
+
+
+{-| Coda API key for accessing the Coda API.
+Get yours from: https://coda.io/account (scroll to "API settings")
+
+This actual value must not be committed to the repo. However, it must be set for the local dev server to work.
+-}
+codaApiKey : String
+codaApiKey =
     ""
