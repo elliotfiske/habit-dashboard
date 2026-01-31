@@ -1,13 +1,17 @@
 module Backend exposing (BackendApp, Model, UnwrappedBackendApp, app, app_)
 
 import CalendarDict
+import Coda
 import Dict
+import Duration
 import Effect.Command as Command exposing (BackendOnly, Command)
 import Effect.Http
 import Effect.Lamdera exposing (ClientId, SessionId)
 import Effect.Subscription as Subscription exposing (Subscription)
+import Effect.Time
 import Env
 import HabitCalendar
+import Json.Decode as Decode
 import Lamdera as L
 import SeqDict
 import Toggl
@@ -60,6 +64,7 @@ subscriptions _ =
     Subscription.batch
         [ Effect.Lamdera.onConnect ClientConnected
         , Effect.Lamdera.onDisconnect ClientDisconnected
+        , Effect.Time.every (Duration.minutes 30) CodaPollTick
         ]
 
 
@@ -70,9 +75,46 @@ init =
       , togglProjects = []
       , runningEntry = Types.NoRunningEntry
       , webhookEvents = []
+      , codaStatus = Types.CodaNotFetched
       }
-    , Command.none
+    , fetchCodaProject
     )
+
+
+{-| Fetch the current active project from Coda.
+-}
+fetchCodaProject : Command BackendOnly ToFrontend BackendMsg
+fetchCodaProject =
+    Effect.Http.request
+        { method = "GET"
+        , url = Coda.apiUrl
+        , headers = [ Effect.Http.header "Authorization" ("Bearer " ++ Env.codaApiKey) ]
+        , body = Effect.Http.emptyBody
+        , expect = Effect.Http.expectString GotCodaResponse
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| Convert an HTTP error to a user-friendly string.
+-}
+httpErrorToString : Effect.Http.Error -> String
+httpErrorToString error =
+    case error of
+        Effect.Http.BadUrl url ->
+            "Bad URL: " ++ url
+
+        Effect.Http.Timeout ->
+            "Request timed out"
+
+        Effect.Http.NetworkError ->
+            "Network error"
+
+        Effect.Http.BadStatus status ->
+            "HTTP error: " ++ String.fromInt status
+
+        Effect.Http.BadBody body ->
+            "Bad response: " ++ body
 
 
 update : BackendMsg -> Model -> ( Model, Command BackendOnly ToFrontend BackendMsg )
@@ -118,10 +160,15 @@ update msg model =
                         (\event -> Effect.Lamdera.sendToFrontend clientId (WebhookDebugEvent event))
                         (List.reverse model.webhookEvents)
 
+                -- Send current Coda status
+                codaStatusCmd : Command BackendOnly ToFrontend BackendMsg
+                codaStatusCmd =
+                    Effect.Lamdera.sendToFrontend clientId (CodaStatusUpdated model.codaStatus)
+
                 -- Reverse to send oldest first
             in
             ( model
-            , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: webhookEventsCmds)
+            , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: codaStatusCmd :: webhookEventsCmds)
             )
 
         ClientDisconnected _ _ ->
@@ -288,6 +335,43 @@ update msg model =
             , Effect.Lamdera.broadcast (RunningEntryUpdated runningEntry)
             )
 
+        CodaPollTick _ ->
+            ( model, fetchCodaProject )
+
+        GotCodaResponse result ->
+            case result of
+                Ok jsonString ->
+                    case Decode.decodeString Coda.decodeCodaResponse jsonString of
+                        Ok projects ->
+                            let
+                                newStatus : Types.CodaStatus
+                                newStatus =
+                                    Coda.parseCodaStatus projects
+                            in
+                            ( { model | codaStatus = newStatus }
+                            , Effect.Lamdera.broadcast (CodaStatusUpdated newStatus)
+                            )
+
+                        Err decodeError ->
+                            let
+                                errorStatus : Types.CodaStatus
+                                errorStatus =
+                                    Types.CodaError (Decode.errorToString decodeError)
+                            in
+                            ( { model | codaStatus = errorStatus }
+                            , Effect.Lamdera.broadcast (CodaStatusUpdated errorStatus)
+                            )
+
+                Err httpError ->
+                    let
+                        errorStatus : Types.CodaStatus
+                        errorStatus =
+                            Types.CodaError (httpErrorToString httpError)
+                    in
+                    ( { model | codaStatus = errorStatus }
+                    , Effect.Lamdera.broadcast (CodaStatusUpdated errorStatus)
+                    )
+
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Command BackendOnly ToFrontend BackendMsg )
 updateFromFrontend _ clientId msg model =
@@ -387,3 +471,6 @@ updateFromFrontend _ clientId msg model =
             ( { model | calendars = updatedCalendars }
             , Effect.Lamdera.broadcast (CalendarsUpdated updatedCalendars)
             )
+
+        FetchCodaProject ->
+            ( model, fetchCodaProject )

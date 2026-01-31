@@ -20,6 +20,7 @@ import CalendarDict exposing (CalendarDict)
 import Effect.Browser
 import Effect.Browser.Navigation
 import Effect.Lamdera
+import Effect.Http
 import HabitCalendar exposing (HabitCalendarId)
 import Http
 import Time exposing (Posix, Zone)
@@ -211,7 +212,7 @@ type BackendMsg
     | GotStopTimerResponse Effect.Lamdera.ClientId (Result Toggl.TogglApiError ())
     | BroadcastRunningEntry RunningEntry -- Used for testing and webhook simulation
     | CodaPollTick Time.Posix
-    | GotCodaResponse (Result Http.Error String)
+    | GotCodaResponse (Result Effect.Http.Error String)
 
 
 type ToFrontend
