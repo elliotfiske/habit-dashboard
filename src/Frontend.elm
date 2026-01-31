@@ -24,6 +24,7 @@ import Types exposing (FrontendModel, FrontendMsg(..), ModalState(..), RunningEn
 import UI.CalendarView
 import UI.ConnectionCard
 import UI.Modal
+import UI.ProjectBanner
 import UI.TimerBanner
 import UI.WebhookDebug
 import Url
@@ -639,7 +640,8 @@ view model =
         , Html.div [ Attr.class "min-h-screen p-8", backgroundStyle ]
             [ Html.div [ Attr.class "max-w-4xl mx-auto" ]
                 (UI.TimerBanner.view model
-                    ++ [ UI.ConnectionCard.view model
+                    ++ [ UI.ProjectBanner.view model
+                       , UI.ConnectionCard.view model
                        , UI.CalendarView.view model
                        , UI.WebhookDebug.view model
                        ]
