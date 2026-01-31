@@ -58,6 +58,7 @@ init _ key =
       , runningEntry = NoRunningEntry
       , webhookDebugLog = []
       , stopTimerError = Nothing
+      , codaStatus = Types.CodaNotFetched
       }
     , Command.batch
         [ Effect.Task.perform GotTime Effect.Time.now
@@ -351,6 +352,11 @@ update msg model =
             , Effect.Lamdera.sendToBackend ClearWebhookEventsRequest
             )
 
+        RefreshCodaProject ->
+            ( { model | codaStatus = Types.CodaLoading }
+            , Effect.Lamdera.sendToBackend FetchCodaProject
+            )
+
         -- Edit calendar actions
         OpenEditCalendarModal calendar ->
             let
@@ -590,6 +596,9 @@ updateFromBackend msg model =
         WebhookEventsCleared ->
             -- Clear webhook debug log
             ( { model | webhookDebugLog = [] }, Command.none )
+
+        CodaStatusUpdated codaStatus ->
+            ( { model | codaStatus = codaStatus }, Command.none )
 
 
 view : Model -> Effect.Browser.Document FrontendMsg
