@@ -2,6 +2,8 @@ module Types exposing
     ( BackendModel
     , BackendMsg(..)
     , CalendarInfo
+    , CodaProject
+    , CodaStatus(..)
     , CreateCalendarModal
     , EditCalendarModal
     , FrontendModel
@@ -37,6 +39,7 @@ type alias FrontendModel =
     , runningEntry : RunningEntry
     , webhookDebugLog : List WebhookDebugEntry -- Recent webhook events for debugging
     , stopTimerError : Maybe String
+    , codaStatus : CodaStatus
     }
 
 
@@ -48,6 +51,25 @@ type alias WebhookDebugEntry =
     , description : String
     , rawJson : String
     }
+
+
+{-| A project from the Coda "Current Focus!" table.
+-}
+type alias CodaProject =
+    { name : String
+    , startDate : Maybe Time.Posix
+    , endDate : Maybe Time.Posix
+    }
+
+
+{-| Status of the Coda project integration.
+-}
+type CodaStatus
+    = CodaNotFetched
+    | CodaLoading
+    | CodaOneActive CodaProject
+    | CodaInvalidCount Int -- 0 or 2+ active projects
+    | CodaError String
 
 
 {-| Modal state for the frontend.
@@ -109,6 +131,7 @@ type alias BackendModel =
     , togglProjects : List TogglProject
     , runningEntry : RunningEntry
     , webhookEvents : List WebhookDebugEntry -- Store all webhook events for debugging
+    , codaStatus : CodaStatus
     }
 
 
@@ -149,6 +172,8 @@ type FrontendMsg
     | DismissStopTimerError
       -- Webhook debug actions
     | ClearWebhookEvents
+      -- Coda actions
+    | RefreshCodaProject
 
 
 type ToBackend
@@ -161,6 +186,7 @@ type ToBackend
     | ClearWebhookEventsRequest
     | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId String String Bool -- calendarId, name, workspaceId, projectId, successColor, nonzeroColor, isOrangetheory
     | DeleteCalendarRequest HabitCalendar.HabitCalendarId
+    | FetchCodaProject
 
 
 {-| Info needed to create a calendar from fetched time entries.
@@ -184,6 +210,8 @@ type BackendMsg
     | GotWebhookValidation (Result Http.Error ())
     | GotStopTimerResponse Effect.Lamdera.ClientId (Result Toggl.TogglApiError ())
     | BroadcastRunningEntry RunningEntry -- Used for testing and webhook simulation
+    | CodaPollTick Time.Posix
+    | GotCodaResponse (Result Http.Error String)
 
 
 type ToFrontend
@@ -196,3 +224,4 @@ type ToFrontend
     | WebhookDebugEvent WebhookDebugEntry
     | WebhookEventsCleared
     | StopTimerFailed String RunningEntry
+    | CodaStatusUpdated CodaStatus
