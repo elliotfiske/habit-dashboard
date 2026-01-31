@@ -31,6 +31,12 @@ Install npm dependencies (for TailwindCSS):
 npm install
 ```
 
+Enable git hooks (prevents accidentally committing API keys):
+
+```bash
+git config core.hooksPath .githooks
+```
+
 Build the CSS:
 
 ```bash
