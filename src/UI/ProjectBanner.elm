@@ -1,4 +1,4 @@
-module UI.ProjectBanner exposing (view)
+module UI.ProjectBanner exposing (isDateOutOfRange, view)
 
 {-| Active project banner UI.
 
@@ -122,6 +122,10 @@ refreshButton isLoading =
 
 
 {-| Check if the current date is outside the project's date range.
+
+Note: End dates from Coda are stored as midnight (00:00:00) of that day.
+We treat the end date as inclusive, meaning the entire final day is valid.
+
 -}
 isDateOutOfRange : Maybe Time.Posix -> CodaProject -> Bool
 isDateOutOfRange maybeNow project =
@@ -148,7 +152,14 @@ isDateOutOfRange maybeNow project =
                 afterEnd =
                     case project.endDate of
                         Just end ->
-                            nowMillis > Time.posixToMillis end
+                            let
+                                oneDayMillis : Int
+                                oneDayMillis =
+                                    24 * 60 * 60 * 1000
+                            in
+                            -- End date is stored as midnight, so add one day
+                            -- to include the entire final day as valid
+                            nowMillis >= Time.posixToMillis end + oneDayMillis
 
                         Nothing ->
                             False
