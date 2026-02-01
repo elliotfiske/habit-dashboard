@@ -161,8 +161,8 @@ view model =
 ## Testing with lamdera/program-test
 
 - Run tests: `elm-test`
-- Tests location: `tests/SmokeTests.elm`
-- Visual debugger: `http://localhost:8000/tests/SmokeTests.elm` (use arrow keys to step through)
+- Tests location: `tests/E2ETests.elm`
+- Visual debugger: `http://localhost:8000/tests/E2ETests.elm` (use arrow keys to step through)
 
 ### Testing Skills (invoke as needed)
 - `/testing-quick-ref` - Common patterns, start here

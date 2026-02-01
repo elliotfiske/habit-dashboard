@@ -164,7 +164,7 @@ Map API errors to user-friendly messages:
 
 ## Testing Strategy
 
-### Test Cases (in tests/SmokeTests.elm)
+### Test Cases (in tests/E2ETests.elm)
 
 1. **Happy path**:
    - Start with running timer
@@ -187,7 +187,7 @@ Map API errors to user-friendly messages:
    - Verify stop button doesn't appear
 
 5. **Visual verification**:
-   - Use test viewer at `localhost:8000/tests/SmokeTests.elm`
+   - Use test viewer at `localhost:8000/tests/E2ETests.elm`
    - Step through timeline with arrow keys
    - Verify UI states at each step
 

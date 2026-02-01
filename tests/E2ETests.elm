@@ -1,4 +1,4 @@
-module SmokeTests exposing (appTests, main)
+module E2ETests exposing (appTests, main)
 
 import Backend
 import Dict
@@ -252,7 +252,7 @@ encodeTimeEntryGroup entry =
 
 
 {-| Encode time entries in the Reports API search format.
-The API returns: [{ description, project\_id, time\_entries: [...] }, ...]
+The API returns: [{ description, project\_id, time\_entries: [...] }, ...][{ description, project_id, time_entries: [...] }, ...]
 Each entry becomes its own group with description at the top level.
 -}
 encodeTimeEntriesSearchResponse : List Toggl.TimeEntry -> E.Value
@@ -296,13 +296,13 @@ tests : List (Effect.Test.EndToEndTest ToBackend FrontendMsg FrontendModel ToFro
 tests =
     [ standardTest "Future days should show dash instead of zero"
         (\client1 ->
-                [ -- January 1, 2026 is a Thursday
-                  -- January 2 is a future day and should show "-"
-                  client1.checkView 100
-                    (Test.Html.Query.find [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "day-2026-01-02") ]
-                        >> Test.Html.Query.has [ Test.Html.Selector.text "-" ]
-                    )
-                ]
+            [ -- January 1, 2026 is a Thursday
+              -- January 2 is a future day and should show "-"
+              client1.checkView 100
+                (Test.Html.Query.find [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "day-2026-01-02") ]
+                    >> Test.Html.Query.has [ Test.Html.Selector.text "-" ]
+                )
+            ]
         )
     , standardTest "Create Calendar UI shows projects from selected workspace"
         (\actions ->

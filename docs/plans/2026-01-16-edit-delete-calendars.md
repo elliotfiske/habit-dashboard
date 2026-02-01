@@ -734,7 +734,7 @@ Expected: PASS
 **Step 3: Commit**
 
 ```bash
-git add tests/SmokeTests.elm
+git add tests/E2ETests.elm
 git commit -m "test: add edit calendar happy path test"
 ```
 
@@ -805,7 +805,7 @@ Expected: PASS
 **Step 3: Commit**
 
 ```bash
-git add tests/SmokeTests.elm
+git add tests/E2ETests.elm
 git commit -m "test: add edit calendar validation test"
 ```
 
@@ -870,7 +870,7 @@ Expected: PASS
 **Step 3: Commit**
 
 ```bash
-git add tests/SmokeTests.elm
+git add tests/E2ETests.elm
 git commit -m "test: add delete calendar test"
 ```
 

@@ -80,7 +80,7 @@ actions.checkView 200 (...)
 
 ## Visual Debugging
 
-Navigate to `http://localhost:8000/tests/SmokeTests.elm`:
+Navigate to `http://localhost:8000/tests/E2ETests.elm`:
 - Use arrow keys (Left/Right) to step through timeline
 - Click "clientId 0" to see frontend view at each step
 - Timestamp shown at bottom of screen

@@ -92,7 +92,7 @@ elm-test
 You can view a visual, interactive output of `lamdera/program-test` tests by navigating to the test file in your browser:
 
 ```
-http://localhost:8000/tests/SmokeTests.elm
+http://localhost:8000/tests/E2ETests.elm
 ```
 
 This provides a step-by-step visualization of the test execution, which is helpful for debugging end-to-end tests.

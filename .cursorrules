@@ -60,10 +60,10 @@ Access Lamdera-specific commands by typing `:lamdera` in the REPL.
 
 ### Running Tests
 - Run tests with `elm-test` from the project root
-- Tests are located in `tests/SmokeTests.elm`
+- Tests are located in `tests/E2ETests.elm`
 
 ### Test Viewer (Visual Debugging)
-- Navigate to `http://localhost:8000/tests/SmokeTests.elm` to see an interactive test timeline
+- Navigate to `http://localhost:8000/tests/E2ETests.elm` to see an interactive test timeline
 - The test viewer shows a visual timeline of all events (backend init, frontend connect, messages, etc.)
 - Click on "clientId 0" to select the frontend client view
 - Use **arrow keys (Left/Right)** to step through the timeline and see the view at each point
