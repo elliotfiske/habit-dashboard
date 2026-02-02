@@ -220,6 +220,7 @@ type BackendMsg
     | GotCodaResponse (Result Effect.Http.Error String)
     | StartTimerWithTime Effect.Lamdera.ClientId String Time.Posix
     | GotStartTimerResponse Effect.Lamdera.ClientId (Result Toggl.TogglApiError ())
+    | GotRpcStartTimerResponse (Result Http.Error ())
 
 
 type ToFrontend

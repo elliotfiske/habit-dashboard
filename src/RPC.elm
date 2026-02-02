@@ -8,15 +8,18 @@ when time entries are created, updated, or deleted.
 -}
 
 import CalendarDict
+import Coda
+import Env
 import HabitCalendar exposing (HabitCalendarId(..))
 import Http
 import Json.Decode as D
 import Json.Encode as E
 import Lamdera
 import LamderaRPC exposing (RPCArgs, RPCResult(..))
+import Task
 import Time
 import Toggl
-import Types exposing (BackendModel, BackendMsg, ToFrontend(..), WebhookDebugEntry)
+import Types exposing (BackendModel, BackendMsg(..), ToFrontend(..), WebhookDebugEntry)
 
 
 {-| Main entry point for all RPC endpoints.
@@ -27,6 +30,9 @@ lamdera_handleEndpoints args model =
     case args.endpoint of
         "togglWebhook" ->
             LamderaRPC.handleEndpointJson handleTogglWebhook args model
+
+        "startMonofocusTimer" ->
+            LamderaRPC.handleEndpointJson handleStartMonofocusTimer args model
 
         _ ->
             ( ResultJson (E.object [ ( "error", E.string ("Unknown endpoint: " ++ args.endpoint) ) ])
@@ -337,3 +343,63 @@ calculateNewRunningEntry event previousRunningEntry =
             else
                 -- Some other update - no change
                 previousRunningEntry
+
+
+{-| Handle incoming request to start a Monofocus timer.
+
+POST /_r/startMonofocusTimer
+Body (optional): { "description": "Custom description" }
+
+If no description is provided, uses the current Coda project name.
+
+-}
+handleStartMonofocusTimer : Lamdera.SessionId -> BackendModel -> E.Value -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
+handleStartMonofocusTimer _ model jsonArg =
+    let
+        -- Try to get description from request body, fall back to Coda project name
+        requestDescription : Maybe String
+        requestDescription =
+            D.decodeValue (D.field "description" D.string) jsonArg
+                |> Result.toMaybe
+
+        codaProjectName : Maybe String
+        codaProjectName =
+            case model.codaStatus of
+                Types.CodaOneActive project ->
+                    Just project.name
+
+                _ ->
+                    Nothing
+
+        description : String
+        description =
+            requestDescription
+                |> Maybe.withDefault (Maybe.withDefault "Monofocus" codaProjectName)
+
+        -- Create the task to start the timer
+        startTimerTask : Task.Task Http.Error ()
+        startTimerTask =
+            Time.now
+                |> Task.andThen
+                    (\now ->
+                        Toggl.startTimeEntryTask
+                            Env.togglApiKey
+                            Coda.monofocusWorkspaceId
+                            Coda.monofocusProjectId
+                            description
+                            now
+                    )
+
+        cmd : Cmd BackendMsg
+        cmd =
+            Task.attempt GotRpcStartTimerResponse startTimerTask
+    in
+    ( Ok
+        (E.object
+            [ ( "status", E.string "started" )
+            , ( "description", E.string description )
+            ]
+        )
+    , model
+    , cmd
+    )

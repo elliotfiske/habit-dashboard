@@ -19,6 +19,7 @@ module Toggl exposing
     , pingValidationDecoder
     , projectDecoder
     , startTimeEntry
+    , startTimeEntryTask
     , stopTimeEntry
     , timeEntriesSearchDecoder
     , timeEntryIdToInt
@@ -47,6 +48,7 @@ import Iso8601
 import Json.Decode as D exposing (Decoder)
 import Json.Decode.Pipeline as DP
 import Json.Encode as E
+import Task exposing (Task)
 import Time exposing (Posix)
 
 
@@ -519,6 +521,45 @@ startTimeEntry apiKey workspaceId projectId description startTime toMsg =
         , expect = Effect.Http.expectStringResponse toMsg (handleResponse (D.succeed ()))
         , timeout = Just (Duration.seconds 10)
         , tracker = Nothing
+        }
+
+
+{-| Start a new time entry (Task version for use in RPC handlers).
+POST https://api.track.toggl.com/api/v9/workspaces/{workspace_id}/time_entries
+-}
+startTimeEntryTask :
+    ApiKey
+    -> TogglWorkspaceId
+    -> TogglProjectId
+    -> String
+    -> Posix
+    -> Task Http.Error ()
+startTimeEntryTask apiKey workspaceId projectId description startTime =
+    let
+        url : String
+        url =
+            "https://api.track.toggl.com/api/v9/workspaces/"
+                ++ String.fromInt (togglWorkspaceIdToInt workspaceId)
+                ++ "/time_entries"
+
+        body : E.Value
+        body =
+            E.object
+                [ ( "workspace_id", E.int (togglWorkspaceIdToInt workspaceId) )
+                , ( "project_id", E.int (togglProjectIdToInt projectId) )
+                , ( "description", E.string description )
+                , ( "start", E.string (Iso8601.fromTime startTime) )
+                , ( "duration", E.int -1 )
+                , ( "created_with", E.string "habit-dashboard-rpc" )
+                ]
+    in
+    Http.task
+        { method = "POST"
+        , headers = [ Http.header "Authorization" (apiKeyToAuthHeader apiKey) ]
+        , url = url
+        , body = Http.jsonBody body
+        , resolver = Http.stringResolver (\_ -> Ok ())
+        , timeout = Just 10000
         }
 
 

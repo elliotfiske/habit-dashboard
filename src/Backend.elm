@@ -415,6 +415,11 @@ update msg model =
                     , Effect.Lamdera.broadcast (CodaStatusUpdated errorStatus)
                     )
 
+        GotRpcStartTimerResponse _ ->
+            -- RPC timer start completed - we don't need to do anything here
+            -- The webhook will update running entry state when the timer actually starts
+            ( model, Command.none )
+
 
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Command BackendOnly ToFrontend BackendMsg )
 updateFromFrontend _ clientId msg model =
