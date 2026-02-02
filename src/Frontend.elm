@@ -60,6 +60,7 @@ init _ key =
       , webhookDebugLog = []
       , stopTimerError = Nothing
       , codaStatus = Types.CodaNotFetched
+      , startMonofocusTimerError = Nothing
       }
     , Command.batch
         [ Effect.Task.perform GotTime Effect.Time.now
@@ -358,6 +359,14 @@ update msg model =
             , Effect.Lamdera.sendToBackend FetchCodaProject
             )
 
+        StartMonofocusTimer description ->
+            ( { model | startMonofocusTimerError = Nothing }
+            , Effect.Lamdera.sendToBackend (Types.StartMonofocusTimerRequest description)
+            )
+
+        DismissStartMonofocusTimerError ->
+            ( { model | startMonofocusTimerError = Nothing }, Command.none )
+
         -- Edit calendar actions
         OpenEditCalendarModal calendar ->
             let
@@ -600,6 +609,9 @@ updateFromBackend msg model =
 
         CodaStatusUpdated codaStatus ->
             ( { model | codaStatus = codaStatus }, Command.none )
+
+        StartMonofocusTimerFailed errorMsg ->
+            ( { model | startMonofocusTimerError = Just errorMsg }, Command.none )
 
 
 view : Model -> Effect.Browser.Document FrontendMsg
