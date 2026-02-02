@@ -18,6 +18,7 @@ module Toggl exposing
     , fetchWorkspaces
     , pingValidationDecoder
     , projectDecoder
+    , startTimeEntry
     , stopTimeEntry
     , timeEntriesSearchDecoder
     , timeEntryIdToInt
@@ -474,6 +475,47 @@ stopTimeEntry apiKey workspaceId timeEntryId toMsg =
         , headers = [ authHeader apiKey ]
         , url = url
         , body = Effect.Http.emptyBody
+        , expect = Effect.Http.expectStringResponse toMsg (handleResponse (D.succeed ()))
+        , timeout = Just (Duration.seconds 10)
+        , tracker = Nothing
+        }
+
+
+{-| Start a new time entry.
+POST https://api.track.toggl.com/api/v9/workspaces/{workspace_id}/time_entries
+-}
+startTimeEntry :
+    ApiKey
+    -> TogglWorkspaceId
+    -> TogglProjectId
+    -> String
+    -> Posix
+    -> (Result TogglApiError () -> msg)
+    -> Effect.Command.Command restriction toMsg msg
+startTimeEntry apiKey workspaceId projectId description startTime toMsg =
+    let
+        url : String
+        url =
+            "https://api.track.toggl.com/api/v9/workspaces/"
+                ++ String.fromInt (togglWorkspaceIdToInt workspaceId)
+                ++ "/time_entries"
+
+        body : E.Value
+        body =
+            E.object
+                [ ( "workspace_id", E.int (togglWorkspaceIdToInt workspaceId) )
+                , ( "project_id", E.int (togglProjectIdToInt projectId) )
+                , ( "description", E.string description )
+                , ( "start", E.string (Iso8601.fromTime startTime) )
+                , ( "duration", E.int -1 )
+                , ( "created_with", E.string "habit-dashboard" )
+                ]
+    in
+    Effect.Http.request
+        { method = "POST"
+        , headers = [ authHeader apiKey ]
+        , url = url
+        , body = Effect.Http.jsonBody body
         , expect = Effect.Http.expectStringResponse toMsg (handleResponse (D.succeed ()))
         , timeout = Just (Duration.seconds 10)
         , tracker = Nothing
