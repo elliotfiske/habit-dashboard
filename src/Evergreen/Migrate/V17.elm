@@ -25,8 +25,7 @@ import Evergreen.V16.Types
 import Evergreen.V17.HabitCalendar
 import Evergreen.V17.Toggl
 import Evergreen.V17.Types
-import Lamdera.Migrations exposing (..)
-import Maybe
+import Lamdera.Migrations exposing (ModelMigration(..), MsgMigration(..))
 
 
 frontendModel : Evergreen.V16.Types.FrontendModel -> ModelMigration Evergreen.V17.Types.FrontendModel Evergreen.V17.Types.FrontendMsg

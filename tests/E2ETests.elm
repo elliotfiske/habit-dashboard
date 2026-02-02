@@ -11,6 +11,7 @@ import Expect
 import Frontend
 import HabitCalendar
 import Html.Attributes
+import Http
 import Iso8601
 import Json.Encode as E
 import Test exposing (describe)
@@ -1151,6 +1152,55 @@ tests =
                 (Test.Html.Query.findAll
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-timer-error") ]
                     >> Test.Html.Query.count (Expect.equal 0)
+                )
+            ]
+        )
+    , standardTest "RPC start timer response is handled by backend"
+        (\actions ->
+            [ -- Simulate RPC timer start completing successfully
+              -- (The actual RPC call can't be simulated, but we can test the response handler)
+              Effect.Test.backendUpdate 100
+                (GotRpcStartTimerResponse (Ok ()))
+            , -- Verify app is still functioning normally
+              actions.checkView 200
+                (Test.Html.Query.has
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "project-banner") ]
+                )
+            , -- Simulate RPC timer start failing
+              Effect.Test.backendUpdate 100
+                (GotRpcStartTimerResponse (Err Http.NetworkError))
+            , -- App should still be functioning (RPC errors don't affect frontend)
+              actions.checkView 200
+                (Test.Html.Query.has
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "project-banner") ]
+                )
+            ]
+        )
+    , standardTest "RPC timer start triggers webhook which updates running entry"
+        (\actions ->
+            [ -- Wait for Coda project to load
+              actions.checkView 500
+                (Test.Html.Query.has
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
+                )
+            , -- Simulate RPC starting a timer (backend sends this after HTTP call)
+              Effect.Test.backendUpdate 100
+                (GotRpcStartTimerResponse (Ok ()))
+            , -- Simulate Toggl webhook notifying us that the timer started
+              -- (This is what would happen in production after the API call succeeds)
+              Effect.Test.backendUpdate 100
+                (BroadcastRunningEntry (Types.RunningEntry mockMonofocusRunningEntry))
+            , -- Verify the running timer banner shows the Monofocus entry
+              actions.checkView 200
+                (Test.Html.Query.find
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "running-timer-banner") ]
+                    >> Test.Html.Query.has [ Test.Html.Selector.text "Kitchen organization" ]
+                )
+            , -- Verify the start button is now disabled since Monofocus is running
+              actions.checkView 100
+                (Test.Html.Query.find
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
+                    >> Test.Html.Query.has [ Test.Html.Selector.disabled True ]
                 )
             ]
         )
