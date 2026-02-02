@@ -179,6 +179,20 @@ mockRunningEntry =
     }
 
 
+{-| Mock running timer for Monofocus project.
+-}
+mockMonofocusRunningEntry : Toggl.WebhookPayload
+mockMonofocusRunningEntry =
+    { id = Toggl.TimeEntryId 889
+    , projectId = Just (Toggl.TogglProjectId 205793718) -- Monofocus project ID
+    , workspaceId = Toggl.TogglWorkspaceId 4150145 -- Monofocus workspace ID
+    , description = Just "Kitchen organization"
+    , start = Time.millisToPosix january1st2026
+    , stop = Nothing
+    , duration = -1
+    }
+
+
 {-| Mock Coda project for testing - dates span Jan 1-10, 2026.
 -}
 mockCodaProject : Types.CodaProject
@@ -1056,6 +1070,90 @@ tests =
                 )
             ]
         )
+    , standardTest "Start timer button visible when Coda project is active"
+        (\actions ->
+            [ -- Wait for Coda API mock response
+              actions.checkView 500
+                (Test.Html.Query.has
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
+                )
+            ]
+        )
+    , standardTest "Start timer button disabled when Monofocus timer already running"
+        (\actions ->
+            [ -- Wait for Coda project to load
+              actions.checkView 500
+                (Test.Html.Query.has
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
+                )
+            , -- Broadcast Monofocus running entry
+              Effect.Test.backendUpdate 100
+                (BroadcastRunningEntry (Types.RunningEntry mockMonofocusRunningEntry))
+            , -- Verify button is disabled
+              actions.checkView 200
+                (Test.Html.Query.find
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
+                    >> Test.Html.Query.has [ Test.Html.Selector.disabled True ]
+                )
+            ]
+        )
+    , standardTest "Start timer button enabled when different project timer running"
+        (\actions ->
+            [ -- Wait for Coda project to load
+              actions.checkView 500
+                (Test.Html.Query.has
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
+                )
+            , -- Broadcast non-Monofocus running entry (mockRunningEntry uses project 159657524)
+              Effect.Test.backendUpdate 100
+                (BroadcastRunningEntry (Types.RunningEntry mockRunningEntry))
+            , -- Verify button is enabled (not disabled)
+              actions.checkView 200
+                (Test.Html.Query.find
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
+                    >> Test.Html.Query.has [ Test.Html.Selector.disabled False ]
+                )
+            ]
+        )
+    , standardTest "Start timer button not visible when no active Coda project"
+        (\actions ->
+            [ -- Simulate no active projects
+              Effect.Test.backendUpdate 100
+                (GotCodaResponse (Ok "{\"items\":[]}"))
+            , -- Verify button is not present
+              actions.checkView 200
+                (Test.Html.Query.findAll
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
+                    >> Test.Html.Query.count (Expect.equal 0)
+                )
+            ]
+        )
+    , standardTest "Start timer error shows in banner and can be dismissed"
+        (\actions ->
+            [ -- Wait for Coda project to load
+              actions.checkView 500
+                (Test.Html.Query.has
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
+                )
+            , -- Simulate backend error response
+              Effect.Test.backendUpdate 100
+                (GotStartTimerResponse actions.clientId (Err (Toggl.HttpError (Effect.Http.BadStatus 401))))
+            , -- Verify error appears
+              actions.checkView 200
+                (Test.Html.Query.find
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-timer-error") ]
+                    >> Test.Html.Query.has [ Test.Html.Selector.text "401" ]
+                )
+            , -- Dismiss error
+              actions.click 100 (Dom.id "dismiss-start-timer-error")
+            , -- Verify error is gone
+              actions.checkView 200
+                (Test.Html.Query.findAll
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-timer-error") ]
+                    >> Test.Html.Query.count (Expect.equal 0)
+                )
+            ]
+        )
     ]
 
 
@@ -1121,6 +1219,12 @@ handleHttpRequest { currentRequest } =
         StringHttpResponse
             (okMetadata url)
             (E.encode 0 (encodeCodaResponse [ mockCodaProject ]))
+
+    else if String.contains "api.track.toggl.com/api/v9/workspaces" url && currentRequest.method == "POST" && String.contains "/time_entries" url && not (String.contains "/stop" url) then
+        -- POST /api/v9/workspaces/{id}/time_entries - Start time entry
+        JsonHttpResponse
+            (okMetadata url)
+            (E.object [ ( "id", E.int 12345 ) ])
 
     else
         -- Unhandled request - return network error
