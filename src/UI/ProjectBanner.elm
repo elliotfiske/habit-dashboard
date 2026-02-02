@@ -7,11 +7,12 @@ and a refresh button.
 
 -}
 
+import Coda
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Html.Events as Events
 import Time
-import Types exposing (CodaProject, CodaStatus(..), FrontendModel, FrontendMsg(..))
+import Types exposing (CodaProject, CodaStatus(..), FrontendModel, FrontendMsg(..), RunningEntry(..))
 
 
 {-| Render the active project banner.
@@ -48,19 +49,29 @@ view model =
 
                     else
                         ( "bg-success", "text-success-content" )
-            in
-            viewBanner bgColor textColor
-                [ viewHeader
-                , Html.div [ Attr.class "flex items-center gap-2" ]
-                    [ Html.span [ Attr.class "text-lg font-semibold" ] [ Html.text project.name ]
-                    , Html.span [ Attr.class "text-base opacity-80" ] [ Html.text (formatDateRange project) ]
-                    , if dateWarning then
-                        Html.span [ Attr.class "badge badge-warning badge-sm" ] [ Html.text "Dates out of range" ]
 
-                      else
-                        Html.text ""
+                buttonDisabled : Bool
+                buttonDisabled =
+                    isMonofocusRunning model
+            in
+            Html.div []
+                [ viewBanner bgColor textColor
+                    [ viewHeader
+                    , Html.div [ Attr.class "flex items-center gap-2" ]
+                        [ Html.span [ Attr.class "text-lg font-semibold" ] [ Html.text project.name ]
+                        , Html.span [ Attr.class "text-base opacity-80" ] [ Html.text (formatDateRange project) ]
+                        , if dateWarning then
+                            Html.span [ Attr.class "badge badge-warning badge-sm" ] [ Html.text "Dates out of range" ]
+
+                          else
+                            Html.text ""
+                        ]
+                    , Html.div [ Attr.class "flex items-center gap-2" ]
+                        [ startTimerButton buttonDisabled project.name
+                        , refreshButton False
+                        ]
                     ]
-                , refreshButton False
+                , viewStartTimerError model.startMonofocusTimerError
                 ]
 
         CodaInvalidCount count ->
@@ -165,6 +176,54 @@ isDateOutOfRange maybeNow project =
                             False
             in
             beforeStart || afterEnd
+
+
+{-| Check if the currently running timer is for the Monofocus project.
+-}
+isMonofocusRunning : FrontendModel -> Bool
+isMonofocusRunning model =
+    case model.runningEntry of
+        NoRunningEntry ->
+            False
+
+        RunningEntry payload ->
+            payload.projectId == Just Coda.monofocusProjectId
+
+
+{-| Start timer button with disabled state.
+-}
+startTimerButton : Bool -> String -> Html FrontendMsg
+startTimerButton isDisabled projectName =
+    Html.button
+        [ Attr.class "btn btn-sm btn-primary"
+        , Attr.disabled isDisabled
+        , Events.onClick (StartMonofocusTimer projectName)
+        , Attr.attribute "data-testid" "start-monofocus-button"
+        ]
+        [ Html.text "Start Timer" ]
+
+
+{-| Error banner for start timer failures.
+-}
+viewStartTimerError : Maybe String -> Html FrontendMsg
+viewStartTimerError maybeError =
+    case maybeError of
+        Nothing ->
+            Html.text ""
+
+        Just errorMsg ->
+            Html.div
+                [ Attr.class "alert alert-error mt-2"
+                , Attr.attribute "data-testid" "start-timer-error"
+                ]
+                [ Html.span [] [ Html.text errorMsg ]
+                , Html.button
+                    [ Attr.class "btn btn-sm btn-ghost"
+                    , Events.onClick DismissStartMonofocusTimerError
+                    , Attr.id "dismiss-start-timer-error"
+                    ]
+                    [ Html.text "✕" ]
+                ]
 
 
 {-| Format the date range for display.
