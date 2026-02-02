@@ -1,4 +1,4 @@
-module Coda exposing (apiUrl, decodeCodaResponse, parseCodaStatus)
+module Coda exposing (apiUrl, decodeCodaResponse, monofocusProjectId, monofocusWorkspaceId, parseCodaStatus)
 
 {-| Coda API integration for fetching the active project.
 
@@ -8,6 +8,7 @@ This module handles parsing the Coda API response from the "Current Focus!" tabl
 
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
+import Toggl exposing (TogglProjectId(..), TogglWorkspaceId(..))
 import Types exposing (CodaProject, CodaStatus(..))
 
 
@@ -30,6 +31,20 @@ tableId =
 apiUrl : String
 apiUrl =
     "https://coda.io/apis/v1/docs/" ++ docId ++ "/tables/" ++ tableId ++ "/rows?useColumnNames=true&sortBy=updatedAt"
+
+
+{-| The Toggl project ID for Monofocus.
+-}
+monofocusProjectId : Toggl.TogglProjectId
+monofocusProjectId =
+    TogglProjectId 205793718
+
+
+{-| The Toggl workspace ID for Monofocus.
+-}
+monofocusWorkspaceId : Toggl.TogglWorkspaceId
+monofocusWorkspaceId =
+    TogglWorkspaceId 4150145
 
 
 {-| Decode a single row from the Coda API response.
