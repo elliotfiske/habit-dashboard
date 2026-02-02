@@ -41,6 +41,7 @@ type alias FrontendModel =
     , webhookDebugLog : List WebhookDebugEntry -- Recent webhook events for debugging
     , stopTimerError : Maybe String
     , codaStatus : CodaStatus
+    , startMonofocusTimerError : Maybe String
     }
 
 
@@ -175,6 +176,9 @@ type FrontendMsg
     | ClearWebhookEvents
       -- Coda actions
     | RefreshCodaProject
+      -- Start Monofocus timer actions
+    | StartMonofocusTimer String -- Coda project name as description
+    | DismissStartMonofocusTimerError
 
 
 type ToBackend
@@ -188,6 +192,7 @@ type ToBackend
     | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId String String Bool -- calendarId, name, workspaceId, projectId, successColor, nonzeroColor, isOrangetheory
     | DeleteCalendarRequest HabitCalendar.HabitCalendarId
     | FetchCodaProject
+    | StartMonofocusTimerRequest String -- description
 
 
 {-| Info needed to create a calendar from fetched time entries.
@@ -213,6 +218,8 @@ type BackendMsg
     | BroadcastRunningEntry RunningEntry -- Used for testing and webhook simulation
     | CodaPollTick Time.Posix
     | GotCodaResponse (Result Effect.Http.Error String)
+    | StartTimerWithTime Effect.Lamdera.ClientId String Time.Posix
+    | GotStartTimerResponse Effect.Lamdera.ClientId (Result Toggl.TogglApiError ())
 
 
 type ToFrontend
@@ -226,3 +233,4 @@ type ToFrontend
     | WebhookEventsCleared
     | StopTimerFailed String RunningEntry
     | CodaStatusUpdated CodaStatus
+    | StartMonofocusTimerFailed String
