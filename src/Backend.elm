@@ -8,6 +8,7 @@ import Effect.Command as Command exposing (BackendOnly, Command)
 import Effect.Http
 import Effect.Lamdera exposing (ClientId, SessionId)
 import Effect.Subscription as Subscription exposing (Subscription)
+import Effect.Task
 import Effect.Time
 import Env
 import HabitCalendar
@@ -338,6 +339,48 @@ update msg model =
         CodaPollTick _ ->
             ( model, fetchCodaProject )
 
+        StartTimerWithTime clientId description now ->
+            ( model
+            , Toggl.startTimeEntry Env.togglApiKey
+                Coda.monofocusWorkspaceId
+                Coda.monofocusProjectId
+                description
+                now
+                (GotStartTimerResponse clientId)
+            )
+
+        GotStartTimerResponse clientId result ->
+            case result of
+                Ok () ->
+                    -- Success: do nothing, webhook will sync state
+                    ( model, Command.none )
+
+                Err apiError ->
+                    let
+                        errorMsg : String
+                        errorMsg =
+                            case apiError of
+                                Toggl.HttpError httpError ->
+                                    case httpError of
+                                        Effect.Http.BadStatus code ->
+                                            "Failed to start timer (" ++ String.fromInt code ++ "): " ++ Toggl.togglApiErrorToString apiError
+
+                                        Effect.Http.NetworkError ->
+                                            "Failed to start timer: Network error"
+
+                                        Effect.Http.Timeout ->
+                                            "Failed to start timer: Request timed out"
+
+                                        _ ->
+                                            "Failed to start timer: " ++ Toggl.togglApiErrorToString apiError
+
+                                Toggl.RateLimited _ ->
+                                    "Failed to start timer: " ++ Toggl.togglApiErrorToString apiError
+                    in
+                    ( model
+                    , Effect.Lamdera.sendToFrontend clientId (Types.StartMonofocusTimerFailed errorMsg)
+                    )
+
         GotCodaResponse result ->
             case result of
                 Ok jsonString ->
@@ -474,3 +517,9 @@ updateFromFrontend _ clientId msg model =
 
         FetchCodaProject ->
             ( model, fetchCodaProject )
+
+        StartMonofocusTimerRequest description ->
+            ( model
+            , Effect.Time.now
+                |> Effect.Task.perform (StartTimerWithTime clientId description)
+            )
