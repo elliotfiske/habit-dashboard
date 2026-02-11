@@ -24,7 +24,7 @@ view model =
     Html.div [ Attr.class "card bg-base-100 shadow-lg p-6 mb-8" ]
         [ case model.togglStatus of
             NotConnected ->
-                Html.div [ Attr.class "flex items-center justify-between" ]
+                Html.div [ Attr.class "grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-2" ]
                     [ Html.div [ Attr.class "flex items-center gap-2 text-base-content/60" ]
                         [ Html.text "Not connected to Toggl" ]
                     , Html.button
@@ -43,7 +43,7 @@ view model =
                     ]
 
             Connected workspaces ->
-                Html.div [ Attr.class "flex items-center justify-between" ]
+                Html.div [ Attr.class "grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-2" ]
                     [ Html.div [ Attr.class "flex items-center gap-2 text-success" ]
                         [ Html.span [ Attr.class "text-lg" ] [ Html.text "✓" ]
                         , Html.text ("Connected · " ++ String.fromInt (List.length workspaces) ++ " workspace(s)")

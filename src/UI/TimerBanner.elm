@@ -99,7 +99,7 @@ runningTimerHeader model =
                 , bgStyle
                 , Attr.attribute "data-testid" "running-timer-banner"
                 ]
-                [ Html.div [ Attr.class "flex items-center justify-between" ]
+                [ Html.div [ Attr.class "grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-3" ]
                     [ Html.div [ Attr.class "flex items-center gap-3" ]
                         [ Html.span [ Attr.class "loading loading-ring loading-md" ] []
                         , Html.div []
@@ -111,7 +111,7 @@ runningTimerHeader model =
                             , Html.div [ Attr.class "text-sm opacity-80" ] [ Html.text "Currently tracking" ]
                             ]
                         ]
-                    , Html.div [ Attr.class "flex items-center gap-4" ]
+                    , Html.div [ Attr.class "flex items-center gap-4 justify-end" ]
                         [ Html.div
                             [ Attr.class "text-3xl font-mono font-bold"
                             , Attr.attribute "data-testid" "running-timer-duration"

@@ -106,7 +106,7 @@ viewBanner bgColor textColor content =
         [ Attr.class ("card shadow-lg p-4 mb-6 " ++ bgColor ++ " " ++ textColor)
         , Attr.attribute "data-testid" "project-banner"
         ]
-        [ Html.div [ Attr.class "flex items-center justify-between" ]
+        [ Html.div [ Attr.class "grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] items-center gap-2 sm:gap-4" ]
             content
         ]
 
