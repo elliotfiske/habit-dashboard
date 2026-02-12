@@ -47,6 +47,56 @@ console.log("Backend model:", model.bem)
 
 ---
 
+## Console Usage Tips
+
+### Top-Level Await
+
+Modern Chrome DevTools Console supports top-level `await` directly:
+
+```javascript
+// This works in Chrome DevTools Console
+await window.__lamdera.ready
+const result = await window.__lamdera.replExec("1 + 1")
+console.log(result.output)
+```
+
+However, if you're using the bridge programmatically (e.g., via browser automation, bookmarklets, or `javascript:` URLs), you'll need to wrap your code in an async IIFE (Immediately Invoked Function Expression):
+
+```javascript
+// Wrap in IIFE for programmatic usage
+(async () => {
+  await window.__lamdera.ready;
+  const result = await window.__lamdera.replExec("1 + 1");
+  console.log(result.output);
+})()
+```
+
+**When you'll see this error:**
+```
+SyntaxError: await is only valid in async functions and the top level bodies of modules
+```
+
+**Solution:** Use the IIFE pattern shown above.
+
+### Copy-Paste Ready Examples
+
+All examples in this guide show the direct `await` syntax for readability. If you need the IIFE version, simply wrap the code:
+
+```javascript
+// Direct syntax (works in DevTools)
+await window.__lamdera.ready
+const model = window.__lamdera.getModel()
+
+// IIFE syntax (works everywhere)
+(async () => {
+  await window.__lamdera.ready;
+  const model = window.__lamdera.getModel();
+  console.log(model);
+})()
+```
+
+---
+
 ## Understanding the Lamdera REPL
 
 ### Special Variables in the REPL
