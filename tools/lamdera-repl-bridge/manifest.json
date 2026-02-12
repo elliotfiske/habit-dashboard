@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Lamdera REPL Bridge",
+  "version": "1.0.0",
+  "description": "Exposes the Lamdera dev app instance for programmatic REPL access",
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:8000/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-inject.js"],
+      "matches": ["http://localhost:8000/*"]
+    }
+  ]
+}
