@@ -192,7 +192,13 @@
             "Ports:",
             app.ports ? Object.keys(app.ports) : "none"
           );
-          console.log("🔧 [Bridge] App instance:", app);
+
+          // Auto-open the REPL after a short delay to let the DOM settle.
+          // This ensures the REPL is available after every hot reload.
+          setTimeout(function () {
+            _autoOpenRepl();
+          }, 500);
+
           return app;
         };
       } else {
@@ -234,6 +240,74 @@
   });
 
   // --- Helper functions ---
+
+  function _autoOpenRepl() {
+    console.log("🔧 [Bridge] Auto-opening REPL...");
+
+    // The Lamdera dev toolbar is collapsed by default. It shows icons and "Env: Dev"
+    // but "Show Repl" only appears after hovering. We need to:
+    // 1. Find the toolbar (identified by "Env:" text)
+    // 2. Simulate hover to expand it
+    // 3. Poll for "Show Repl" to appear, then click it
+
+    var toolbar = _findDevToolbar();
+    if (!toolbar) {
+      console.warn("🔧 [Bridge] Auto-open REPL failed: toolbar not found");
+      return;
+    }
+
+    console.log("🔧 [Bridge] Found dev toolbar, simulating hover...");
+    toolbar.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    toolbar.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+
+    // Poll for "Show Repl" to appear after hover expands the toolbar
+    var attempts = 0;
+    var maxAttempts = 25; // 5 seconds
+    var interval = setInterval(function () {
+      var showRepl = _findShowReplButton();
+      if (showRepl) {
+        clearInterval(interval);
+        console.log("🔧 [Bridge] Found 'Show Repl' button, clicking...");
+        showRepl.click();
+        console.log("🔧 [Bridge] ✅ REPL auto-opened successfully");
+      } else if (++attempts >= maxAttempts) {
+        clearInterval(interval);
+        console.warn("🔧 [Bridge] Auto-open REPL failed: 'Show Repl' never appeared");
+        // Move mouse away to un-hover
+        toolbar.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
+      }
+    }, 200);
+  }
+
+  function _findDevToolbar() {
+    // The collapsed toolbar contains "Env:" text. Find that element
+    // and walk up to the toolbar root.
+    var divs = document.querySelectorAll("div");
+    for (var i = 0; i < divs.length; i++) {
+      if (divs[i].textContent.indexOf("Env:") !== -1 && divs[i].childElementCount <= 2) {
+        // Walk up to the outermost toolbar container
+        var el = divs[i];
+        while (el.parentElement && el.parentElement !== document.body) {
+          el = el.parentElement;
+        }
+        console.log("🔧 [Bridge] Found toolbar via 'Env:' text:", el.tagName, el.style.cssText.substring(0, 80));
+        return el;
+      }
+    }
+
+    console.log("🔧 [Bridge] ⚠️ Could not find dev toolbar");
+    return null;
+  }
+
+  function _findShowReplButton() {
+    var divs = document.querySelectorAll("div");
+    for (var i = 0; i < divs.length; i++) {
+      if (divs[i].textContent.trim() === "Show Repl") {
+        return divs[i];
+      }
+    }
+    return null;
+  }
 
   function _ensureReplOpen() {
     console.log("🔧 [Bridge] _ensureReplOpen called");
