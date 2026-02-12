@@ -145,9 +145,15 @@
   // --- Intercept Elm global ---
   // The Lamdera IIFE sets window.Elm = { Lamdera: { Live: ... }, Repl: { Worker: ... } }
   // We use Object.defineProperty to intercept this assignment and patch init functions.
+  //
+  // RACE CONDITION FIX: Our script loads via <script src>, which is async.
+  // 50% of the time, the page's IIFE runs first and sets window.Elm before us.
+  // Object.defineProperty would replace that value with a getter returning undefined.
+  // Fix: capture any existing value, and if Elm is already set, patch it immediately.
 
-  var _Elm;
+  var _Elm = window.Elm; // Capture existing value (may be undefined or already set)
   console.log("🔧 [Bridge] Setting up Elm interceptor");
+  console.log("🔧 [Bridge] window.Elm BEFORE interception:", _Elm);
 
   Object.defineProperty(window, "Elm", {
     configurable: true,
@@ -157,87 +163,67 @@
     },
     set: function (val) {
       console.log("🔧 [Bridge] window.Elm is being set!");
-      console.log("🔧 [Bridge] Elm value:", val);
       _Elm = val;
-
-      // Patch the main app init
-      if (val && val.Lamdera && val.Lamdera.Live && val.Lamdera.Live.init) {
-        console.log("🔧 [Bridge] Found Elm.Lamdera.Live.init, patching...");
-        var origInit = val.Lamdera.Live.init;
-        val.Lamdera.Live.init = function (args) {
-          console.log("🔧 [Bridge] Elm.Lamdera.Live.init called with args:", args);
-          var app = origInit.call(this, args);
-          lamdera.app = app;
-          lamdera._readyResolve(app);
-
-          // Intercept REPL output by monkey-patching the incoming port's .send()
-          // receiveFromWorkerPort is an INCOMING port (JS → Elm), so it has .send(), not .subscribe()
-          // The JS bridge calls .send(data) when the worker produces a result.
-          // We wrap .send() to capture that data before it enters the Elm app.
-          if (app.ports && app.ports.receiveFromWorkerPort) {
-            console.log("🔧 [Bridge] Found app.ports.receiveFromWorkerPort, patching .send()...");
-            var origSend = app.ports.receiveFromWorkerPort.send.bind(app.ports.receiveFromWorkerPort);
-            app.ports.receiveFromWorkerPort.send = function (data) {
-              console.log("🔧 [Bridge] Intercepted receiveFromWorkerPort.send:", data);
-              lamdera._handleReplOutput(data);
-              return origSend(data);
-            };
-            console.log("🔧 [Bridge] ✅ Patched receiveFromWorkerPort.send");
-          } else {
-            console.log("🔧 [Bridge] ⚠️ app.ports.receiveFromWorkerPort not found");
-          }
-
-          console.log(
-            "🔧 [Bridge] ✅ App captured!",
-            "Ports:",
-            app.ports ? Object.keys(app.ports) : "none"
-          );
-
-          // Auto-open the REPL after a short delay to let the DOM settle.
-          // This ensures the REPL is available after every hot reload.
-          setTimeout(function () {
-            _autoOpenRepl();
-          }, 500);
-
-          return app;
-        };
-      } else {
-        console.log("🔧 [Bridge] ⚠️ Elm.Lamdera.Live.init not found in:", val);
-      }
-
-      // Patch the REPL worker init (captures worker when REPL is first used)
-      if (val && val.Repl && val.Repl.Worker && val.Repl.Worker.init) {
-        console.log("🔧 [Bridge] Found Elm.Repl.Worker.init, patching...");
-        var origWorkerInit = val.Repl.Worker.init;
-        val.Repl.Worker.init = function (args) {
-          console.log("🔧 [Bridge] Elm.Repl.Worker.init called with args:", args);
-          var worker = origWorkerInit.call(this, args);
-          lamdera.worker = worker;
-          lamdera._workerReadyResolve(worker);
-
-          // Subscribe to REPL output to capture results
-          if (worker.ports && worker.ports.sendToClientPort) {
-            worker.ports.sendToClientPort.subscribe(function (data) {
-              console.log("🔧 [Bridge] Received REPL output:", data);
-              lamdera._handleReplOutput(data);
-            });
-            console.log("🔧 [Bridge] ✅ Subscribed to REPL output port");
-          } else {
-            console.log("🔧 [Bridge] ⚠️ worker.ports.sendToClientPort not found");
-          }
-
-          console.log(
-            "🔧 [Bridge] ✅ REPL Worker captured!",
-            "Ports:",
-            worker.ports ? Object.keys(worker.ports) : "none"
-          );
-          return worker;
-        };
-      } else {
-        console.log("🔧 [Bridge] Elm.Repl.Worker.init not found in:", val);
-      }
+      _patchElm(val);
     },
   });
+
+  // If Elm was already set before we installed the interceptor, patch it now
+  if (_Elm) {
+    console.log("🔧 [Bridge] Elm was already set, patching retroactively...");
+    _patchElm(_Elm);
+  }
+
+  function _patchElm(val) {
+    // Patch the main app init
+    if (val && val.Lamdera && val.Lamdera.Live && val.Lamdera.Live.init) {
+      // Guard against double-patching (if setter fires after we already patched)
+      if (val.Lamdera.Live.init.__bridgePatched) {
+        console.log("🔧 [Bridge] Elm.Lamdera.Live.init already patched, skipping");
+        return;
+      }
+      console.log("🔧 [Bridge] Found Elm.Lamdera.Live.init, patching...");
+      var origInit = val.Lamdera.Live.init;
+      var patchedInit = function (args) {
+        console.log("🔧 [Bridge] Elm.Lamdera.Live.init called");
+        var app = origInit.call(this, args);
+        _onAppCaptured(app);
+        return app;
+      };
+      patchedInit.__bridgePatched = true;
+      val.Lamdera.Live.init = patchedInit;
+    }
+  }
+
+  function _onAppCaptured(app) {
+    lamdera.app = app;
+    lamdera._readyResolve(app);
+
+    // Intercept REPL output by monkey-patching the incoming port's .send()
+    // receiveFromWorkerPort is an INCOMING port (JS → Elm), so it has .send(), not .subscribe()
+    // The JS bridge calls .send(data) when the worker produces a result.
+    // We wrap .send() to capture that data before it enters the Elm app.
+    if (app.ports && app.ports.receiveFromWorkerPort) {
+      console.log("🔧 [Bridge] Patching receiveFromWorkerPort.send...");
+      var origSend = app.ports.receiveFromWorkerPort.send.bind(app.ports.receiveFromWorkerPort);
+      app.ports.receiveFromWorkerPort.send = function (data) {
+        lamdera._handleReplOutput(data);
+        return origSend(data);
+      };
+      console.log("🔧 [Bridge] ✅ Patched receiveFromWorkerPort.send");
+    }
+
+    console.log(
+      "🔧 [Bridge] ✅ App captured!",
+      "Ports:",
+      app.ports ? Object.keys(app.ports) : "none"
+    );
+
+    // Auto-open the REPL after a short delay to let the DOM settle.
+    setTimeout(function () {
+      _autoOpenRepl();
+    }, 500);
+  }
 
   // --- Helper functions ---
 
