@@ -1,7 +1,6 @@
 module Backend exposing (BackendApp, Model, UnwrappedBackendApp, app, app_)
 
 import CalendarDict
-import Coda
 import Dict
 import Duration
 import Effect.Command as Command exposing (BackendOnly, Command)
@@ -13,7 +12,9 @@ import Effect.Time
 import Env
 import HabitCalendar
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Lamdera as L
+import Monofocus
 import SeqDict
 import Toggl
 import Types exposing (BackendModel, BackendMsg(..), ToBackend(..), ToFrontend(..))
@@ -65,7 +66,7 @@ subscriptions _ =
     Subscription.batch
         [ Effect.Lamdera.onConnect ClientConnected
         , Effect.Lamdera.onDisconnect ClientDisconnected
-        , Effect.Time.every (Duration.minutes 30) CodaPollTick
+        , Effect.Time.every (Duration.minutes 30) MonofocusPollTick
         ]
 
 
@@ -76,22 +77,22 @@ init =
       , togglProjects = []
       , runningEntry = Types.NoRunningEntry
       , webhookEvents = []
-      , codaStatus = Types.CodaNotFetched
+      , monofocusStatus = Types.MonofocusNotFetched
       }
-    , fetchCodaProject
+    , fetchMonofocusProject
     )
 
 
-{-| Fetch the current active project from Coda.
+{-| Fetch the current active project from the Monofocus Hub.
 -}
-fetchCodaProject : Command BackendOnly ToFrontend BackendMsg
-fetchCodaProject =
+fetchMonofocusProject : Command BackendOnly ToFrontend BackendMsg
+fetchMonofocusProject =
     Effect.Http.request
-        { method = "GET"
-        , url = Coda.apiUrl
-        , headers = [ Effect.Http.header "Authorization" ("Bearer " ++ Env.codaApiKey) ]
-        , body = Effect.Http.emptyBody
-        , expect = Effect.Http.expectString GotCodaResponse
+        { method = "POST"
+        , url = Monofocus.activeUrl
+        , headers = []
+        , body = Effect.Http.jsonBody (Encode.object [])
+        , expect = Effect.Http.expectString GotMonofocusResponse
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -161,15 +162,15 @@ update msg model =
                         (\event -> Effect.Lamdera.sendToFrontend clientId (WebhookDebugEvent event))
                         (List.reverse model.webhookEvents)
 
-                -- Send current Coda status
-                codaStatusCmd : Command BackendOnly ToFrontend BackendMsg
-                codaStatusCmd =
-                    Effect.Lamdera.sendToFrontend clientId (CodaStatusUpdated model.codaStatus)
+                -- Send current Monofocus status
+                monofocusStatusCmd : Command BackendOnly ToFrontend BackendMsg
+                monofocusStatusCmd =
+                    Effect.Lamdera.sendToFrontend clientId (MonofocusStatusUpdated model.monofocusStatus)
 
                 -- Reverse to send oldest first
             in
             ( model
-            , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: codaStatusCmd :: webhookEventsCmds)
+            , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: monofocusStatusCmd :: webhookEventsCmds)
             )
 
         ClientDisconnected _ _ ->
@@ -336,14 +337,14 @@ update msg model =
             , Effect.Lamdera.broadcast (RunningEntryUpdated runningEntry)
             )
 
-        CodaPollTick _ ->
-            ( model, fetchCodaProject )
+        MonofocusPollTick _ ->
+            ( model, fetchMonofocusProject )
 
         StartTimerWithTime clientId description now ->
             ( model
             , Toggl.startTimeEntry Env.togglApiKey
-                Coda.monofocusWorkspaceId
-                Coda.monofocusProjectId
+                Monofocus.monofocusWorkspaceId
+                Monofocus.monofocusProjectId
                 description
                 now
                 (GotStartTimerResponse clientId)
@@ -381,38 +382,43 @@ update msg model =
                     , Effect.Lamdera.sendToFrontend clientId (Types.StartMonofocusTimerFailed errorMsg)
                     )
 
-        GotCodaResponse result ->
+        GotMonofocusResponse result ->
             case result of
                 Ok jsonString ->
-                    case Decode.decodeString Coda.decodeCodaResponse jsonString of
-                        Ok projects ->
+                    case Decode.decodeString Monofocus.decodeActiveResponse jsonString of
+                        Ok maybeProject ->
                             let
-                                newStatus : Types.CodaStatus
+                                newStatus : Types.MonofocusStatus
                                 newStatus =
-                                    Coda.parseCodaStatus projects
+                                    case maybeProject of
+                                        Just project ->
+                                            Types.MonofocusOneActive project
+
+                                        Nothing ->
+                                            Types.MonofocusNoActive
                             in
-                            ( { model | codaStatus = newStatus }
-                            , Effect.Lamdera.broadcast (CodaStatusUpdated newStatus)
+                            ( { model | monofocusStatus = newStatus }
+                            , Effect.Lamdera.broadcast (MonofocusStatusUpdated newStatus)
                             )
 
                         Err decodeError ->
                             let
-                                errorStatus : Types.CodaStatus
+                                errorStatus : Types.MonofocusStatus
                                 errorStatus =
-                                    Types.CodaError (Decode.errorToString decodeError)
+                                    Types.MonofocusError (Decode.errorToString decodeError)
                             in
-                            ( { model | codaStatus = errorStatus }
-                            , Effect.Lamdera.broadcast (CodaStatusUpdated errorStatus)
+                            ( { model | monofocusStatus = errorStatus }
+                            , Effect.Lamdera.broadcast (MonofocusStatusUpdated errorStatus)
                             )
 
                 Err httpError ->
                     let
-                        errorStatus : Types.CodaStatus
+                        errorStatus : Types.MonofocusStatus
                         errorStatus =
-                            Types.CodaError (httpErrorToString httpError)
+                            Types.MonofocusError (httpErrorToString httpError)
                     in
-                    ( { model | codaStatus = errorStatus }
-                    , Effect.Lamdera.broadcast (CodaStatusUpdated errorStatus)
+                    ( { model | monofocusStatus = errorStatus }
+                    , Effect.Lamdera.broadcast (MonofocusStatusUpdated errorStatus)
                     )
 
         GotRpcStartTimerResponse _ ->
@@ -520,8 +526,8 @@ updateFromFrontend _ clientId msg model =
             , Effect.Lamdera.broadcast (CalendarsUpdated updatedCalendars)
             )
 
-        FetchCodaProject ->
-            ( model, fetchCodaProject )
+        FetchMonofocusProject ->
+            ( model, fetchMonofocusProject )
 
         StartMonofocusTimerRequest description ->
             ( model

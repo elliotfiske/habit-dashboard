@@ -194,23 +194,13 @@ mockMonofocusRunningEntry =
     }
 
 
-{-| Mock Coda project for testing - dates span Jan 1-10, 2026.
+{-| Mock Monofocus Hub project for testing - dates span Jan 1-10, 2026.
 -}
-mockCodaProject : Types.CodaProject
-mockCodaProject =
-    { name = "Kitchen organization"
-    , startDate = Just (Time.millisToPosix january1st2026)
-    , endDate = Just (Time.millisToPosix (january1st2026 + (10 * 24 * 60 * 60 * 1000)))
-    }
-
-
-{-| Mock Coda project with past end date (ended Dec 25, 2025).
--}
-mockCodaProjectExpired : Types.CodaProject
-mockCodaProjectExpired =
-    { name = "Holiday prep"
-    , startDate = Just (Time.millisToPosix (january1st2026 - (10 * 24 * 60 * 60 * 1000)))
-    , endDate = Just (Time.millisToPosix (january1st2026 - (7 * 24 * 60 * 60 * 1000)))
+mockMonofocusProject : Types.MonofocusProject
+mockMonofocusProject =
+    { title = "Kitchen organization"
+    , startDate = Time.millisToPosix january1st2026
+    , endDate = Time.millisToPosix (january1st2026 + (10 * 24 * 60 * 60 * 1000))
     }
 
 
@@ -295,41 +285,25 @@ encodeTimeEntriesSearchResponse entries =
     E.list encodeTimeEntryGroup entries
 
 
-{-| Encode a Coda project row in the Coda API format.
+{-| Encode a Monofocus Hub /\_r/active response: `{ "project": Project | null }`.
 -}
-encodeCodaRow : Types.CodaProject -> E.Value
-encodeCodaRow project =
+encodeMonofocusResponse : Maybe Types.MonofocusProject -> E.Value
+encodeMonofocusResponse maybeProject =
     E.object
-        [ ( "values"
-          , E.object
-                [ ( "Initiative name", E.string project.name )
-                , ( "Start date"
-                  , case project.startDate of
-                        Just date ->
-                            E.string (Iso8601.fromTime date)
+        [ ( "project"
+          , case maybeProject of
+                Just project ->
+                    E.object
+                        [ ( "id", E.int 1 )
+                        , ( "title", E.string project.title )
+                        , ( "description", E.string "" )
+                        , ( "start", E.string (Iso8601.fromTime project.startDate) )
+                        , ( "end", E.string (Iso8601.fromTime project.endDate) )
+                        ]
 
-                        Nothing ->
-                            E.null
-                  )
-                , ( "End date"
-                  , case project.endDate of
-                        Just date ->
-                            E.string (Iso8601.fromTime date)
-
-                        Nothing ->
-                            E.null
-                  )
-                ]
+                Nothing ->
+                    E.null
           )
-        ]
-
-
-{-| Encode a Coda API response with a list of projects.
--}
-encodeCodaResponse : List Types.CodaProject -> E.Value
-encodeCodaResponse projects =
-    E.object
-        [ ( "items", E.list encodeCodaRow projects )
         ]
 
 
@@ -978,9 +952,9 @@ tests =
                 )
             ]
         )
-    , standardTest "Project banner shows active project from Coda API"
+    , standardTest "Project banner shows active project from Monofocus Hub"
         (\actions ->
-            [ -- Backend init triggers Coda fetch, HTTP mock returns mockCodaProject
+            [ -- Backend init triggers Monofocus fetch, HTTP mock returns mockMonofocusProject
               -- Wait for the HTTP response to be processed
               actions.checkView 500
                 (Test.Html.Query.find
@@ -991,7 +965,7 @@ tests =
         )
     , standardTest "Project banner shows date range"
         (\actions ->
-            [ -- Wait for Coda API response
+            [ -- Wait for Monofocus Hub response
               actions.checkView 500
                 (Test.Html.Query.find
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "project-banner") ]
@@ -1003,15 +977,15 @@ tests =
         (\actions ->
             [ actions.checkView 500
                 (Test.Html.Query.has
-                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "refresh-coda-button") ]
+                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "refresh-monofocus-button") ]
                 )
             ]
         )
-    , standardTest "Project banner shows error when Coda returns no projects"
+    , standardTest "Project banner shows error when Monofocus Hub returns no active project"
         (\actions ->
-            [ -- Simulate backend receiving empty project list
+            [ -- Simulate backend receiving null project
               Effect.Test.backendUpdate 100
-                (GotCodaResponse (Ok "{\"items\":[]}"))
+                (GotMonofocusResponse (Ok "{\"project\":null}"))
             , -- Verify error message appears
               actions.checkView 200
                 (Test.Html.Query.find
@@ -1020,60 +994,22 @@ tests =
                 )
             ]
         )
-    , standardTest "Project banner shows error when Coda returns multiple projects"
-        (\actions ->
-            [ -- Simulate backend receiving multiple projects
-              Effect.Test.backendUpdate 100
-                (GotCodaResponse
-                    (Ok
-                        (E.encode 0
-                            (encodeCodaResponse [ mockCodaProject, mockCodaProjectExpired ])
-                        )
-                    )
-                )
-            , -- Verify error message appears
-              actions.checkView 200
-                (Test.Html.Query.find
-                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "project-banner") ]
-                    >> Test.Html.Query.has [ Test.Html.Selector.text "Multiple active projects" ]
-                )
-            ]
-        )
-    , standardTest "Project banner shows date warning when project dates are out of range"
-        (\actions ->
-            [ -- Simulate backend receiving expired project
-              Effect.Test.backendUpdate 100
-                (GotCodaResponse
-                    (Ok
-                        (E.encode 0
-                            (encodeCodaResponse [ mockCodaProjectExpired ])
-                        )
-                    )
-                )
-            , -- Verify warning badge appears
-              actions.checkView 200
-                (Test.Html.Query.find
-                    [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "project-banner") ]
-                    >> Test.Html.Query.has [ Test.Html.Selector.text "Dates out of range" ]
-                )
-            ]
-        )
-    , standardTest "Project banner shows error when Coda API fails"
+    , standardTest "Project banner shows error when Monofocus Hub API fails"
         (\actions ->
             [ -- Simulate backend receiving HTTP error
               Effect.Test.backendUpdate 100
-                (GotCodaResponse (Err Effect.Http.NetworkError))
+                (GotMonofocusResponse (Err Effect.Http.NetworkError))
             , -- Verify error message appears
               actions.checkView 200
                 (Test.Html.Query.find
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "project-banner") ]
-                    >> Test.Html.Query.has [ Test.Html.Selector.text "Coda error" ]
+                    >> Test.Html.Query.has [ Test.Html.Selector.text "Monofocus error" ]
                 )
             ]
         )
-    , standardTest "Start timer button visible when Coda project is active"
+    , standardTest "Start timer button visible when Monofocus Hub project is active"
         (\actions ->
-            [ -- Wait for Coda API mock response
+            [ -- Wait for Monofocus Hub mock response
               actions.checkView 500
                 (Test.Html.Query.has
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
@@ -1082,7 +1018,7 @@ tests =
         )
     , standardTest "Start timer button disabled when Monofocus timer already running"
         (\actions ->
-            [ -- Wait for Coda project to load
+            [ -- Wait for Monofocus Hub project to load
               actions.checkView 500
                 (Test.Html.Query.has
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
@@ -1100,7 +1036,7 @@ tests =
         )
     , standardTest "Start timer button enabled when different project timer running"
         (\actions ->
-            [ -- Wait for Coda project to load
+            [ -- Wait for Monofocus Hub project to load
               actions.checkView 500
                 (Test.Html.Query.has
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
@@ -1116,11 +1052,11 @@ tests =
                 )
             ]
         )
-    , standardTest "Start timer button not visible when no active Coda project"
+    , standardTest "Start timer button not visible when no active Monofocus Hub project"
         (\actions ->
-            [ -- Simulate no active projects
+            [ -- Simulate no active project
               Effect.Test.backendUpdate 100
-                (GotCodaResponse (Ok "{\"items\":[]}"))
+                (GotMonofocusResponse (Ok "{\"project\":null}"))
             , -- Verify button is not present
               actions.checkView 200
                 (Test.Html.Query.findAll
@@ -1131,7 +1067,7 @@ tests =
         )
     , standardTest "Start timer error shows in banner and can be dismissed"
         (\actions ->
-            [ -- Wait for Coda project to load
+            [ -- Wait for Monofocus Hub project to load
               actions.checkView 500
                 (Test.Html.Query.has
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
@@ -1178,7 +1114,7 @@ tests =
         )
     , standardTest "RPC timer start triggers webhook which updates running entry"
         (\actions ->
-            [ -- Wait for Coda project to load
+            [ -- Wait for Monofocus Hub project to load
               actions.checkView 500
                 (Test.Html.Query.has
                     [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "start-monofocus-button") ]
@@ -1264,11 +1200,11 @@ handleHttpRequest { currentRequest } =
             (okMetadata url)
             (encodeTimeEntriesSearchResponse [ mockTimeEntry ])
 
-    else if String.contains "coda.io/apis/v1/docs" url && String.contains "/rows" url then
-        -- GET Coda API - Return one active project
+    else if String.contains "monofocus-hub.lamdera.app/_r/active" url then
+        -- POST Monofocus Hub /_r/active - Return one active project
         StringHttpResponse
             (okMetadata url)
-            (E.encode 0 (encodeCodaResponse [ mockCodaProject ]))
+            (E.encode 0 (encodeMonofocusResponse (Just mockMonofocusProject)))
 
     else if String.contains "api.track.toggl.com/api/v9/workspaces" url && currentRequest.method == "POST" && String.contains "/time_entries" url && not (String.contains "/stop" url) then
         -- POST /api/v9/workspaces/{id}/time_entries - Start time entry

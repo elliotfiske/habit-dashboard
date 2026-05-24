@@ -59,7 +59,7 @@ init _ key =
       , runningEntry = NoRunningEntry
       , webhookDebugLog = []
       , stopTimerError = Nothing
-      , codaStatus = Types.CodaNotFetched
+      , monofocusStatus = Types.MonofocusNotFetched
       , startMonofocusTimerError = Nothing
       }
     , Command.batch
@@ -354,9 +354,9 @@ update msg model =
             , Effect.Lamdera.sendToBackend ClearWebhookEventsRequest
             )
 
-        RefreshCodaProject ->
-            ( { model | codaStatus = Types.CodaLoading }
-            , Effect.Lamdera.sendToBackend FetchCodaProject
+        RefreshMonofocusProject ->
+            ( { model | monofocusStatus = Types.MonofocusLoading }
+            , Effect.Lamdera.sendToBackend FetchMonofocusProject
             )
 
         StartMonofocusTimer description ->
@@ -607,8 +607,8 @@ updateFromBackend msg model =
             -- Clear webhook debug log
             ( { model | webhookDebugLog = [] }, Command.none )
 
-        CodaStatusUpdated codaStatus ->
-            ( { model | codaStatus = codaStatus }, Command.none )
+        MonofocusStatusUpdated monofocusStatus ->
+            ( { model | monofocusStatus = monofocusStatus }, Command.none )
 
         StartMonofocusTimerFailed errorMsg ->
             ( { model | startMonofocusTimerError = Just errorMsg }, Command.none )

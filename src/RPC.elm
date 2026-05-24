@@ -8,8 +8,8 @@ when time entries are created, updated, or deleted.
 -}
 
 import CalendarDict
-import Coda
 import Env
+import Monofocus
 import HabitCalendar exposing (HabitCalendarId(..))
 import Http
 import Json.Decode as D
@@ -350,23 +350,23 @@ calculateNewRunningEntry event previousRunningEntry =
 POST /_r/startMonofocusTimer
 Body (optional): { "description": "Custom description" }
 
-If no description is provided, uses the current Coda project name.
+If no description is provided, uses the current Monofocus Hub project title.
 
 -}
 handleStartMonofocusTimer : Lamdera.SessionId -> BackendModel -> E.Value -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
 handleStartMonofocusTimer _ model jsonArg =
     let
-        -- Try to get description from request body, fall back to Coda project name
+        -- Try to get description from request body, fall back to active project title
         requestDescription : Maybe String
         requestDescription =
             D.decodeValue (D.field "description" D.string) jsonArg
                 |> Result.toMaybe
 
-        codaProjectName : Maybe String
-        codaProjectName =
-            case model.codaStatus of
-                Types.CodaOneActive project ->
-                    Just project.name
+        activeProjectTitle : Maybe String
+        activeProjectTitle =
+            case model.monofocusStatus of
+                Types.MonofocusOneActive project ->
+                    Just project.title
 
                 _ ->
                     Nothing
@@ -374,7 +374,7 @@ handleStartMonofocusTimer _ model jsonArg =
         description : String
         description =
             requestDescription
-                |> Maybe.withDefault (Maybe.withDefault "Monofocus" codaProjectName)
+                |> Maybe.withDefault (Maybe.withDefault "Monofocus" activeProjectTitle)
 
         -- Create the task to start the timer
         startTimerTask : Task.Task Http.Error ()
@@ -384,8 +384,8 @@ handleStartMonofocusTimer _ model jsonArg =
                     (\now ->
                         Toggl.startTimeEntryTask
                             Env.togglApiKey
-                            Coda.monofocusWorkspaceId
-                            Coda.monofocusProjectId
+                            Monofocus.monofocusWorkspaceId
+                            Monofocus.monofocusProjectId
                             description
                             now
                     )

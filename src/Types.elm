@@ -2,13 +2,13 @@ module Types exposing
     ( BackendModel
     , BackendMsg(..)
     , CalendarInfo
-    , CodaProject
-    , CodaStatus(..)
     , CreateCalendarModal
     , EditCalendarModal
     , FrontendModel
     , FrontendMsg(..)
     , ModalState(..)
+    , MonofocusProject
+    , MonofocusStatus(..)
     , RunningEntry(..)
     , ToBackend(..)
     , ToFrontend(..)
@@ -19,8 +19,8 @@ module Types exposing
 import CalendarDict exposing (CalendarDict)
 import Effect.Browser
 import Effect.Browser.Navigation
-import Effect.Lamdera
 import Effect.Http
+import Effect.Lamdera
 import HabitCalendar exposing (HabitCalendarId)
 import Http
 import Time exposing (Posix, Zone)
@@ -40,7 +40,7 @@ type alias FrontendModel =
     , runningEntry : RunningEntry
     , webhookDebugLog : List WebhookDebugEntry -- Recent webhook events for debugging
     , stopTimerError : Maybe String
-    , codaStatus : CodaStatus
+    , monofocusStatus : MonofocusStatus
     , startMonofocusTimerError : Maybe String
     }
 
@@ -55,23 +55,27 @@ type alias WebhookDebugEntry =
     }
 
 
-{-| A project from the Coda "Current Focus!" table.
+{-| The active focus project served by the Monofocus Hub.
 -}
-type alias CodaProject =
-    { name : String
-    , startDate : Maybe Time.Posix
-    , endDate : Maybe Time.Posix
+type alias MonofocusProject =
+    { title : String
+    , startDate : Time.Posix
+    , endDate : Time.Posix
     }
 
 
-{-| Status of the Coda project integration.
+{-| Status of the Monofocus Hub integration.
+
+The server already picks at most one project that contains today, so the
+"multiple active" case from the old Coda integration is gone.
+
 -}
-type CodaStatus
-    = CodaNotFetched
-    | CodaLoading
-    | CodaOneActive CodaProject
-    | CodaInvalidCount Int -- 0 or 2+ active projects
-    | CodaError String
+type MonofocusStatus
+    = MonofocusNotFetched
+    | MonofocusLoading
+    | MonofocusOneActive MonofocusProject
+    | MonofocusNoActive
+    | MonofocusError String
 
 
 {-| Modal state for the frontend.
@@ -133,7 +137,7 @@ type alias BackendModel =
     , togglProjects : List TogglProject
     , runningEntry : RunningEntry
     , webhookEvents : List WebhookDebugEntry -- Store all webhook events for debugging
-    , codaStatus : CodaStatus
+    , monofocusStatus : MonofocusStatus
     }
 
 
@@ -174,10 +178,10 @@ type FrontendMsg
     | DismissStopTimerError
       -- Webhook debug actions
     | ClearWebhookEvents
-      -- Coda actions
-    | RefreshCodaProject
+      -- Monofocus actions
+    | RefreshMonofocusProject
       -- Start Monofocus timer actions
-    | StartMonofocusTimer String -- Coda project name as description
+    | StartMonofocusTimer String -- Monofocus project title as description
     | DismissStartMonofocusTimerError
 
 
@@ -191,7 +195,7 @@ type ToBackend
     | ClearWebhookEventsRequest
     | UpdateCalendar HabitCalendar.HabitCalendarId String Toggl.TogglWorkspaceId Toggl.TogglProjectId String String Bool -- calendarId, name, workspaceId, projectId, successColor, nonzeroColor, isOrangetheory
     | DeleteCalendarRequest HabitCalendar.HabitCalendarId
-    | FetchCodaProject
+    | FetchMonofocusProject
     | StartMonofocusTimerRequest String -- description
 
 
@@ -216,8 +220,8 @@ type BackendMsg
     | GotWebhookValidation (Result Http.Error ())
     | GotStopTimerResponse Effect.Lamdera.ClientId (Result Toggl.TogglApiError ())
     | BroadcastRunningEntry RunningEntry -- Used for testing and webhook simulation
-    | CodaPollTick Time.Posix
-    | GotCodaResponse (Result Effect.Http.Error String)
+    | MonofocusPollTick Time.Posix
+    | GotMonofocusResponse (Result Effect.Http.Error String)
     | StartTimerWithTime Effect.Lamdera.ClientId String Time.Posix
     | GotStartTimerResponse Effect.Lamdera.ClientId (Result Toggl.TogglApiError ())
     | GotRpcStartTimerResponse (Result Http.Error ())
@@ -233,5 +237,5 @@ type ToFrontend
     | WebhookDebugEvent WebhookDebugEntry
     | WebhookEventsCleared
     | StopTimerFailed String RunningEntry
-    | CodaStatusUpdated CodaStatus
+    | MonofocusStatusUpdated MonofocusStatus
     | StartMonofocusTimerFailed String

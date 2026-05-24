@@ -1,33 +1,33 @@
-module UI.ProjectBanner exposing (isDateOutOfRange, view)
+module UI.ProjectBanner exposing (view)
 
 {-| Active project banner UI.
 
-Displays the current active project from Coda with status indicators
-and a refresh button.
+Displays the current active project served by the Monofocus Hub, with a
+refresh button and a "Start Timer" button.
 
 -}
 
-import Coda
 import Html exposing (Html)
 import Html.Attributes as Attr
 import Html.Events as Events
+import Monofocus
 import Time
-import Types exposing (CodaProject, CodaStatus(..), FrontendModel, FrontendMsg(..), RunningEntry(..))
+import Types exposing (FrontendModel, FrontendMsg(..), MonofocusProject, MonofocusStatus(..), RunningEntry(..))
 
 
 {-| Render the active project banner.
 -}
 view : FrontendModel -> Html FrontendMsg
 view model =
-    case model.codaStatus of
-        CodaNotFetched ->
+    case model.monofocusStatus of
+        MonofocusNotFetched ->
             viewBanner "bg-base-300" "text-base-content"
                 [ viewHeader
                 , Html.div [ Attr.class "text-base opacity-60" ] [ Html.text "Loading..." ]
                 , refreshButton False
                 ]
 
-        CodaLoading ->
+        MonofocusLoading ->
             viewBanner "bg-base-300" "text-base-content"
                 [ viewHeader
                 , Html.div [ Attr.class "flex items-center gap-2" ]
@@ -37,63 +37,38 @@ view model =
                 , refreshButton True
                 ]
 
-        CodaOneActive project ->
+        MonofocusOneActive project ->
             let
-                dateWarning : Bool
-                dateWarning =
-                    isDateOutOfRange model.currentTime project
-
-                ( bgColor, textColor ) =
-                    if dateWarning then
-                        ( "bg-warning", "text-warning-content" )
-
-                    else
-                        ( "bg-success", "text-success-content" )
-
                 buttonDisabled : Bool
                 buttonDisabled =
                     isMonofocusRunning model
             in
             Html.div []
-                [ viewBanner bgColor textColor
+                [ viewBanner "bg-success" "text-success-content"
                     [ viewHeader
                     , Html.div [ Attr.class "flex items-center gap-2" ]
-                        [ Html.span [ Attr.class "text-lg font-semibold" ] [ Html.text project.name ]
+                        [ Html.span [ Attr.class "text-lg font-semibold" ] [ Html.text project.title ]
                         , Html.span [ Attr.class "text-base opacity-80" ] [ Html.text (formatDateRange project) ]
-                        , if dateWarning then
-                            Html.span [ Attr.class "badge badge-warning badge-sm" ] [ Html.text "Dates out of range" ]
-
-                          else
-                            Html.text ""
                         ]
                     , Html.div [ Attr.class "flex items-center gap-2" ]
-                        [ startTimerButton buttonDisabled project.name
+                        [ startTimerButton buttonDisabled project.title
                         , refreshButton False
                         ]
                     ]
                 , viewStartTimerError model.startMonofocusTimerError
                 ]
 
-        CodaInvalidCount count ->
-            let
-                message : String
-                message =
-                    if count == 0 then
-                        "No active project in Coda"
-
-                    else
-                        "Multiple active projects (" ++ String.fromInt count ++ ") - fix in Coda"
-            in
+        MonofocusNoActive ->
             viewBanner "bg-error" "text-error-content"
                 [ viewHeader
-                , Html.div [ Attr.class "text-base font-semibold" ] [ Html.text message ]
+                , Html.div [ Attr.class "text-base font-semibold" ] [ Html.text "No active project" ]
                 , refreshButton False
                 ]
 
-        CodaError errorMsg ->
+        MonofocusError errorMsg ->
             viewBanner "bg-error" "text-error-content"
                 [ viewHeader
-                , Html.div [ Attr.class "text-base" ] [ Html.text ("Coda error: " ++ errorMsg) ]
+                , Html.div [ Attr.class "text-base" ] [ Html.text ("Monofocus error: " ++ errorMsg) ]
                 , refreshButton False
                 ]
 
@@ -126,56 +101,10 @@ refreshButton isLoading =
     Html.button
         [ Attr.class "btn btn-sm btn-ghost"
         , Attr.disabled isLoading
-        , Events.onClick RefreshCodaProject
-        , Attr.attribute "data-testid" "refresh-coda-button"
+        , Events.onClick RefreshMonofocusProject
+        , Attr.attribute "data-testid" "refresh-monofocus-button"
         ]
         [ Html.text "↻" ]
-
-
-{-| Check if the current date is outside the project's date range.
-
-Note: End dates from Coda are stored as midnight (00:00:00) of that day.
-We treat the end date as inclusive, meaning the entire final day is valid.
-
--}
-isDateOutOfRange : Maybe Time.Posix -> CodaProject -> Bool
-isDateOutOfRange maybeNow project =
-    case maybeNow of
-        Nothing ->
-            False
-
-        Just now ->
-            let
-                nowMillis : Int
-                nowMillis =
-                    Time.posixToMillis now
-
-                beforeStart : Bool
-                beforeStart =
-                    case project.startDate of
-                        Just start ->
-                            nowMillis < Time.posixToMillis start
-
-                        Nothing ->
-                            False
-
-                afterEnd : Bool
-                afterEnd =
-                    case project.endDate of
-                        Just end ->
-                            let
-                                oneDayMillis : Int
-                                oneDayMillis =
-                                    24 * 60 * 60 * 1000
-                            in
-                            -- End date is stored as midnight, so add one day
-                            -- to include the entire final day as valid
-                            nowMillis >= Time.posixToMillis end + oneDayMillis
-
-                        Nothing ->
-                            False
-            in
-            beforeStart || afterEnd
 
 
 {-| Check if the currently running timer is for the Monofocus project.
@@ -187,7 +116,7 @@ isMonofocusRunning model =
             False
 
         RunningEntry payload ->
-            payload.projectId == Just Coda.monofocusProjectId
+            payload.projectId == Just Monofocus.monofocusProjectId
 
 
 {-| Start timer button with disabled state.
@@ -228,70 +157,59 @@ viewStartTimerError maybeError =
 
 {-| Format the date range for display.
 -}
-formatDateRange : CodaProject -> String
+formatDateRange : MonofocusProject -> String
 formatDateRange project =
+    "(" ++ formatDate project.startDate ++ " - " ++ formatDate project.endDate ++ ")"
+
+
+formatDate : Time.Posix -> String
+formatDate posix =
     let
-        formatDate : Time.Posix -> String
-        formatDate posix =
-            let
-                -- Use UTC for simplicity; could use user's zone if passed in
-                month : Time.Month
-                month =
-                    Time.toMonth Time.utc posix
+        month : Time.Month
+        month =
+            Time.toMonth Time.utc posix
 
-                day : Int
-                day =
-                    Time.toDay Time.utc posix
+        day : Int
+        day =
+            Time.toDay Time.utc posix
 
-                monthStr : String
-                monthStr =
-                    case month of
-                        Time.Jan ->
-                            "Jan"
+        monthStr : String
+        monthStr =
+            case month of
+                Time.Jan ->
+                    "Jan"
 
-                        Time.Feb ->
-                            "Feb"
+                Time.Feb ->
+                    "Feb"
 
-                        Time.Mar ->
-                            "Mar"
+                Time.Mar ->
+                    "Mar"
 
-                        Time.Apr ->
-                            "Apr"
+                Time.Apr ->
+                    "Apr"
 
-                        Time.May ->
-                            "May"
+                Time.May ->
+                    "May"
 
-                        Time.Jun ->
-                            "Jun"
+                Time.Jun ->
+                    "Jun"
 
-                        Time.Jul ->
-                            "Jul"
+                Time.Jul ->
+                    "Jul"
 
-                        Time.Aug ->
-                            "Aug"
+                Time.Aug ->
+                    "Aug"
 
-                        Time.Sep ->
-                            "Sep"
+                Time.Sep ->
+                    "Sep"
 
-                        Time.Oct ->
-                            "Oct"
+                Time.Oct ->
+                    "Oct"
 
-                        Time.Nov ->
-                            "Nov"
+                Time.Nov ->
+                    "Nov"
 
-                        Time.Dec ->
-                            "Dec"
-            in
-            monthStr ++ " " ++ String.fromInt day
-
-        startStr : String
-        startStr =
-            Maybe.map formatDate project.startDate
-                |> Maybe.withDefault "?"
-
-        endStr : String
-        endStr =
-            Maybe.map formatDate project.endDate
-                |> Maybe.withDefault "?"
+                Time.Dec ->
+                    "Dec"
     in
-    "(" ++ startStr ++ " - " ++ endStr ++ ")"
+    monthStr ++ " " ++ String.fromInt day
