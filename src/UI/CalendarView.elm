@@ -32,7 +32,7 @@ view model =
                 now =
                     { zone = zone, posix = time }
             in
-            Html.div [ Attr.class "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-8 w-full justify-items-center" ]
+            Html.div [ Attr.class "flex flex-wrap justify-center gap-8 w-full" ]
                 (viewCalendars now model)
 
         _ ->

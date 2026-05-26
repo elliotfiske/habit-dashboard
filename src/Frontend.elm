@@ -654,10 +654,12 @@ view model =
                 (UI.TimerBanner.view model
                     ++ [ UI.ProjectBanner.view model
                        , UI.ConnectionCard.view model
-                       , UI.CalendarView.view model
-                       , UI.WebhookDebug.view model
                        ]
                 )
+            , Html.div [ Attr.class "max-w-7xl mx-auto" ]
+                [ UI.CalendarView.view model
+                , UI.WebhookDebug.view model
+                ]
             ]
         , UI.Modal.view model
         ]
