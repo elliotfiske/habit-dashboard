@@ -1,6 +1,7 @@
 module Backend exposing (BackendApp, Model, UnwrappedBackendApp, app, app_)
 
 import CalendarDict
+import DateUtils
 import Dict
 import Duration
 import Effect.Command as Command exposing (BackendOnly, Command)
@@ -16,6 +17,7 @@ import Json.Encode as Encode
 import Lamdera as L
 import Monofocus
 import SeqDict
+import Time
 import Toggl
 import Types exposing (BackendModel, BackendMsg(..), ToBackend(..), ToFrontend(..))
 
@@ -79,17 +81,23 @@ init =
       , webhookEvents = []
       , monofocusStatus = Types.MonofocusNotFetched
       }
-    , fetchMonofocusProject
+      -- Get the current time first so we can tell the Hub our local timezone
+      -- offset (see fetchMonofocusProject); the poll tick does the same.
+    , Effect.Time.now |> Effect.Task.perform MonofocusPollTick
     )
 
 
 {-| Fetch the current active project from the Monofocus Hub.
+
+`now` is used to derive the Pacific timezone offset so the Hub picks "today's"
+active project in local time rather than UTC.
+
 -}
-fetchMonofocusProject : Command BackendOnly ToFrontend BackendMsg
-fetchMonofocusProject =
+fetchMonofocusProject : Time.Posix -> Command BackendOnly ToFrontend BackendMsg
+fetchMonofocusProject now =
     Effect.Http.request
         { method = "POST"
-        , url = Monofocus.activeUrl
+        , url = Monofocus.activeUrl (DateUtils.pacificTimezoneOffsetMinutes now)
         , headers = []
         , body = Effect.Http.jsonBody (Encode.object [])
         , expect = Effect.Http.expectString GotMonofocusResponse
@@ -337,8 +345,8 @@ update msg model =
             , Effect.Lamdera.broadcast (RunningEntryUpdated runningEntry)
             )
 
-        MonofocusPollTick _ ->
-            ( model, fetchMonofocusProject )
+        MonofocusPollTick now ->
+            ( model, fetchMonofocusProject now )
 
         StartTimerWithTime clientId description now ->
             ( model
@@ -527,7 +535,9 @@ updateFromFrontend _ clientId msg model =
             )
 
         FetchMonofocusProject ->
-            ( model, fetchMonofocusProject )
+            -- Get the current time first so the Hub fetch carries our timezone
+            -- offset; MonofocusPollTick performs the actual fetch.
+            ( model, Effect.Time.now |> Effect.Task.perform MonofocusPollTick )
 
         StartMonofocusTimerRequest description ->
             ( model
