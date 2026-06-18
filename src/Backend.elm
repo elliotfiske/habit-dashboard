@@ -13,7 +13,6 @@ import Effect.Time
 import Env
 import HabitCalendar
 import Json.Decode as Decode
-import Json.Encode as Encode
 import Lamdera as L
 import Monofocus
 import SeqDict
@@ -97,9 +96,9 @@ fetchMonofocusProject : Time.Posix -> Command BackendOnly ToFrontend BackendMsg
 fetchMonofocusProject now =
     Effect.Http.request
         { method = "POST"
-        , url = Monofocus.activeUrl (DateUtils.pacificTimezoneOffsetMinutes now)
+        , url = Monofocus.activeUrl
         , headers = []
-        , body = Effect.Http.jsonBody (Encode.object [])
+        , body = Effect.Http.jsonBody (Monofocus.encodeActiveRequest (DateUtils.pacificTimezoneOffsetMinutes now))
         , expect = Effect.Http.expectString GotMonofocusResponse
         , timeout = Nothing
         , tracker = Nothing
