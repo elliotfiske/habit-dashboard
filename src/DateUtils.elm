@@ -137,27 +137,27 @@ formatMonthDay time =
         time.posix
 
 
-{-| US Pacific time's offset from UTC, in minutes, using the JavaScript
-`Date.getTimezoneOffset()` convention (positive when behind UTC).
+{-| US Pacific time's offset from UTC, in minutes, using the ISO-8601 / UTC-offset
+convention (minutes to add to UTC to get local time, so negative when behind UTC).
 
-  - PST (standard) = 480 (UTC-8)
-  - PDT (daylight) = 420 (UTC-7)
+  - PST (standard) = -480 (UTC-8)
+  - PDT (daylight) = -420 (UTC-7)
 
 DST runs from the second Sunday of March to the first Sunday of November. The
 DST decision is made from the UTC date, which is correct except for the few
 hours around each transition - good enough for picking the local calendar day.
 
-This is sent to the Monofocus Hub as `?offsetMinutes=` so it picks "today's"
+This is sent to the Monofocus Hub as `offset_minutes` so it picks "today's"
 active project in Pacific time rather than UTC.
 
 -}
 pacificTimezoneOffsetMinutes : Posix -> Int
 pacificTimezoneOffsetMinutes posix =
     if isUsPacificDst posix then
-        420
+        -420
 
     else
-        480
+        -480
 
 
 {-| Whether the given instant falls within US daylight saving time.

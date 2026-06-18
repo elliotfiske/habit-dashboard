@@ -1,4 +1,4 @@
-module Monofocus exposing (activeUrl, decodeActiveResponse, monofocusProjectId, monofocusWorkspaceId)
+module Monofocus exposing (activeUrl, encodeActiveRequest, decodeActiveResponse, monofocusProjectId, monofocusWorkspaceId)
 
 {-| Monofocus Hub integration for fetching the active project.
 
@@ -9,22 +9,30 @@ that owns the list of focus projects and picks which one is "active" today.
 
 import Iso8601
 import Json.Decode as Decode exposing (Decoder)
+import Json.Encode as Encode
 import Toggl exposing (TogglProjectId(..), TogglWorkspaceId(..))
 import Types exposing (MonofocusProject)
 
 
 {-| RPC endpoint that returns the single project whose date range contains today,
 or `null` if none.
+-}
+activeUrl : String
+activeUrl =
+    "https://monofocus-hub.lamdera.app/_r/active"
 
-`offsetMinutes` is the caller's timezone offset (JavaScript `getTimezoneOffset()`
-convention: positive when behind UTC) so the Hub decides "today" in local time
-rather than UTC. Without it, after ~5PM Pacific the Hub would already see
-tomorrow's date and report no active project.
+
+{-| Request body for the /\_r/active endpoint: `{ "offset_minutes": Int }`.
+
+`offset_minutes` is the caller's timezone offset using the ISO-8601 convention
+(minutes to add to UTC to get local time, so negative when behind UTC) so the
+Hub decides "today" in local time rather than UTC. Without it, after ~5PM
+Pacific the Hub would already see tomorrow's date and report the wrong project.
 
 -}
-activeUrl : Int -> String
-activeUrl offsetMinutes =
-    "https://monofocus-hub.lamdera.app/_r/active?offsetMinutes=" ++ String.fromInt offsetMinutes
+encodeActiveRequest : Int -> Encode.Value
+encodeActiveRequest offsetMinutes =
+    Encode.object [ ( "offset_minutes", Encode.int offsetMinutes ) ]
 
 
 {-| The Toggl project ID for Monofocus. Used when starting a Monofocus timer.
