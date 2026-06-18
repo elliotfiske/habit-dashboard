@@ -15,10 +15,16 @@ import Types exposing (MonofocusProject)
 
 {-| RPC endpoint that returns the single project whose date range contains today,
 or `null` if none.
+
+`offsetMinutes` is the caller's timezone offset (JavaScript `getTimezoneOffset()`
+convention: positive when behind UTC) so the Hub decides "today" in local time
+rather than UTC. Without it, after ~5PM Pacific the Hub would already see
+tomorrow's date and report no active project.
+
 -}
-activeUrl : String
-activeUrl =
-    "https://monofocus-hub.lamdera.app/_r/active"
+activeUrl : Int -> String
+activeUrl offsetMinutes =
+    "https://monofocus-hub.lamdera.app/_r/active?offsetMinutes=" ++ String.fromInt offsetMinutes
 
 
 {-| The Toggl project ID for Monofocus. Used when starting a Monofocus timer.
