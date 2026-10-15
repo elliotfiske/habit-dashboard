@@ -172,7 +172,7 @@ lamdera backend --port 8002 --no-colors --eval='…'           # other worktree
 - To *write* backend state, go through the app: drive the UI, or POST to an
   RPC endpoint (`curl -X POST localhost:8000/_r/<endpoint> -d '{…}'`).
 
-## Git hooks, Tailwind and deploys
+## Git hooks and Tailwind
 
 - `npm install` sets `core.hooksPath` to `.githooks`.
 - `public/output.css` is committed (Lamdera serves `public/` from git). The
@@ -181,12 +181,32 @@ lamdera backend --port 8002 --no-colors --eval='…'           # other worktree
   ([scripts/cachebust.js](scripts/cachebust.js)).
 - The pre-commit hook also blocks committing `src/Env.elm` unless it matches
   `Env-Clean.elm` (keeps the Toggl key out of git).
-- The pre-push hook runs `lamdera check` when Elm source changed, so a missing
-  Evergreen migration is caught at PR time. Bypass with `git push --no-verify`.
-- `npm run deploy` ([scripts/deploy.sh](scripts/deploy.sh)) deploys `main`
-  from the primary checkout. See the `lamdera-deploy` skill.
+- The pre-push hook runs `scripts/evergreen-version-check.sh` and
+  `scripts/lamdera-check.sh` (`lamdera check --force`, worktree-safe) when Elm
+  source changed, so a missing or stale Evergreen migration is caught before
+  the PR. Bypass with `git push --no-verify`.
 - `elm-review` runs after every `.elm` edit via a `PostToolUse` hook in
   [.claude/settings.json](.claude/settings.json).
+
+## CI and deploys (GitHub Actions)
+
+- **Tests** (`.github/workflows/tests.yml`): elm-review + `npm test` on every
+  PR and push to main. On PRs, an `Evergreen` job also checks migration
+  numbers against production and runs `lamdera check`.
+- **Deploy** (`.github/workflows/deploy.yml`): every merge to `main` runs
+  `npm run deploy` ([scripts/deploy.sh](scripts/deploy.sh)) on CI, moves the
+  `deployed` branch to what shipped, then re-runs Tests on open PRs (each
+  deploy bumps the production version, which can make their migrations stale).
+- Repo secrets: `LAMDERA_CLI_AUTH` (contents of `~/.elm/.lamdera-cli`, for
+  `lamdera check`) and `LAMDERA_SSH_KEY` (a private key whose public half is in
+  the Lamdera dashboard, for pushing to `apps.lamdera.com`).
+- CI uses the Lamdera version pinned in
+  [scripts/install-lamdera.sh](scripts/install-lamdera.sh).
+- **Any PR that changes a persisted type** must commit its migration: run
+  `scripts/lamdera-check.sh`, finish `src/Evergreen/Migrate/V<N>.elm`, commit
+  `src/Evergreen`. If a check reports a STALE MIGRATION, run
+  `scripts/regen-migration.sh`. See the `lamdera-deploy` skill.
+- `npm run deploy` from the primary checkout on `main` is the manual fallback.
 
 ## Documentation
 - Lamdera REPL docs: https://dashboard.lamdera.app/docs/repl

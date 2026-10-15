@@ -1,16 +1,38 @@
 # Meal plan API
 
-The dashboard shows this week's lunches and dinners. An agent reads and writes
-the plan through three JSON RPC endpoints. No auth.
+The habit dashboard on the living-room monitor shows this week's lunches and
+dinners. This doc is everything a meal-planning agent needs to read and write
+that plan.
 
-- Base URL: `https://habit-dashboard.lamdera.app` (local: `http://localhost:8000`)
-- Every call is a `POST` with `Content-Type: application/json` and a JSON body
-  (send `{}` when there's nothing to say).
-- Dates are `YYYY-MM-DD`. Slots are `"lunch"` or `"dinner"`.
-- Writes show up on open dashboards immediately.
-- Errors come back as `{ "error": "..." }`.
+## Quick reference
 
-## Shape
+| Endpoint | Body | Does |
+|---|---|---|
+| `POST /_r/getMealPlan` | `{}` | Returns the whole stored plan |
+| `POST /_r/setMeals` | `{ "meals": [ … ] }` | Sets or clears individual slots, leaves everything else alone |
+| `POST /_r/replaceMealPlan` | `{ "days": [ … ] }` | Replaces the whole stored plan |
+
+- **Base URL:** `https://habit-dashboard.lamdera.app` (local dev:
+  `http://localhost:8000`)
+- **No auth.**
+- **Always `POST`** with a JSON body. Send `{}` when there's nothing to say.
+  A `GET` returns the app's HTML page, not data.
+- Send `Content-Type: application/json`.
+- Every write responds with the full updated plan, and open dashboards update
+  within a second, without a reload.
+
+## Errors
+
+**Errors come back as HTTP 200**, with an `error` field instead of `days`:
+
+```json
+{ "error": "Unexpected HTTP response: Problem with the value at json.meals[0].slot:\n\n    \"brunch\"\n\nslot must be \"lunch\" or \"dinner\", got \"brunch\"" }
+```
+
+So check the body for an `error` key, not the status code. A request with any
+invalid entry is rejected as a whole: nothing in it is saved.
+
+## Data model
 
 ```json
 {
@@ -19,28 +41,46 @@ the plan through three JSON RPC endpoints. No auth.
       "date": "2026-10-14",
       "lunch": { "name": "Salmon bowl leftovers", "note": null },
       "dinner": { "name": "Chicken tikka masala", "note": "Thaw chicken thighs this morning" }
+    },
+    {
+      "date": "2026-10-15",
+      "lunch": null,
+      "dinner": { "name": "Tacos", "note": null }
     }
   ]
 }
 ```
 
-Days are sorted by date. Only days with at least one meal are listed; an empty
-slot is `null`. `note` is optional free text, shown under tonight's dinner.
+- **`date`**: `YYYY-MM-DD`, the household's local calendar date (US Pacific).
+  Anything else is an error.
+- **Slots**: only `lunch` and `dinner`. An empty slot is `null`.
+- **`name`**: what's shown on the dashboard. Keep it short, under about 35
+  characters. It wraps to two lines in a narrow column, and anything longer is
+  cut off.
+- **`note`**: optional free text, e.g. "Thaw chicken thighs this morning" or
+  "Double batch, freeze half". Notes appear on the dashboard only for **today's**
+  meals, so put same-day prep reminders there.
+- Days are sorted by date. A day appears only if it has at least one meal.
+- Nothing is pruned automatically: past days stay stored until a
+  `replaceMealPlan` drops them.
 
 ## `getMealPlan`
 
 ```bash
-curl -X POST $BASE/_r/getMealPlan -H 'Content-Type: application/json' -d '{}'
+curl -X POST https://habit-dashboard.lamdera.app/_r/getMealPlan \
+  -H 'Content-Type: application/json' -d '{}'
 ```
 
 Returns every stored day, past and future, in the shape above.
 
 ## `setMeals`
 
-Set or clear individual slots. Everything else is left alone.
+Set or clear individual slots. Anything not mentioned is left alone, so this
+is the safe default for changes.
 
 ```bash
-curl -X POST $BASE/_r/setMeals -H 'Content-Type: application/json' -d '{
+curl -X POST https://habit-dashboard.lamdera.app/_r/setMeals \
+  -H 'Content-Type: application/json' -d '{
   "meals": [
     { "date": "2026-10-15", "slot": "dinner", "name": "Tacos" },
     { "date": "2026-10-16", "slot": "dinner", "name": "Pizza night", "note": "Dough from Trader Joe'\''s" },
@@ -49,22 +89,42 @@ curl -X POST $BASE/_r/setMeals -H 'Content-Type: application/json' -d '{
 }'
 ```
 
-A `null`, missing or blank `name` clears the slot. Returns the full updated plan.
+- Each entry needs `date` and `slot` (`"lunch"` or `"dinner"`, case-insensitive).
+- A `null`, missing or blank `name` **clears** that slot.
+- Setting a slot replaces its name *and* note. To keep a note, send it again.
+- Entries apply in order, so a later entry for the same slot wins.
 
 ## `replaceMealPlan`
 
-Replace the whole stored plan with the body (same shape as `getMealPlan`).
-Anything not in the body is deleted.
+Replace everything stored with the body. Same shape as `getMealPlan`'s
+response. **Anything not in the body is deleted**, including past days.
 
 ```bash
-curl -X POST $BASE/_r/replaceMealPlan -H 'Content-Type: application/json' -d '{ "days": [ ... ] }'
+curl -X POST https://habit-dashboard.lamdera.app/_r/replaceMealPlan \
+  -H 'Content-Type: application/json' -d '{
+  "days": [
+    { "date": "2026-10-19", "lunch": { "name": "Leftover chili" }, "dinner": { "name": "Sheet-pan chicken" } },
+    { "date": "2026-10-20", "dinner": { "name": "Salmon rice bowls" } }
+  ]
+}'
 ```
 
-Returns the full updated plan.
+Missing slots count as empty, and `note` can be left out.
 
 ## What the dashboard shows
 
-A Day / Lunch / Dinner table for the current Monday–Sunday week, with today
-highlighted and past days dimmed. Names wrap to two lines; notes are shown
-only for today. Planning next week ahead of time is fine: write those dates now and they
-appear when the week starts.
+A Day / Lunch / Dinner table for the current **Monday–Sunday** week, with
+today highlighted and past days dimmed. Days with nothing planned show "—".
+Next week's meals can be written ahead of time; they appear on Monday.
+
+## Suggested workflow for an agent
+
+1. `getMealPlan` to see what's already planned.
+2. Plan the week (Monday–Sunday), reusing leftovers for the next day's lunch
+   where it makes sense.
+3. Write it with **`setMeals`**, one entry per slot. Prefer it over
+   `replaceMealPlan`, which wipes anything you didn't include.
+4. Check the response for an `error` key. If it's there, nothing was saved:
+   fix the entry it names and resend.
+5. Put same-day prep reminders (thawing, marinating, soaking beans) in that
+   day's `note`.
