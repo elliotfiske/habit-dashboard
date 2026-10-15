@@ -18,11 +18,13 @@ import HabitCalendar exposing (HabitCalendarId(..))
 import Html
 import Html.Attributes as Attr
 import Lamdera as L
+import MealPlan
 import Time
 import Toggl
-import Types exposing (FrontendModel, FrontendMsg(..), ModalState(..), RunningEntry(..), ToBackend(..), ToFrontend(..), TogglConnectionStatus(..))
+import Types exposing (FrontendModel, FrontendMsg(..), MealPlanVariant(..), ModalState(..), RunningEntry(..), ToBackend(..), ToFrontend(..), TogglConnectionStatus(..))
 import UI.CalendarView
 import UI.ConnectionCard
+import UI.MealPlan
 import UI.Modal
 import UI.ProjectBanner
 import UI.TimerBanner
@@ -47,7 +49,7 @@ app_ =
 
 
 init : Url.Url -> Effect.Browser.Navigation.Key -> ( Model, Command FrontendOnly ToBackend FrontendMsg )
-init _ key =
+init url key =
     ( { key = key
       , currentTime = Nothing
       , currentZone = Nothing
@@ -61,12 +63,29 @@ init _ key =
       , stopTimerError = Nothing
       , monofocusStatus = Types.MonofocusNotFetched
       , startMonofocusTimerError = Nothing
+      , mealPlan = MealPlan.empty
+      , mealPlanVariant = mealPlanVariantFromUrl url
       }
     , Command.batch
         [ Effect.Task.perform GotTime Effect.Time.now
         , Effect.Task.perform GotZone Effect.Time.here
         ]
     )
+
+
+{-| Prototype switch between meal plan layouts: `?meals=a` (default), `b`, `c`.
+-}
+mealPlanVariantFromUrl : Url.Url -> MealPlanVariant
+mealPlanVariantFromUrl url =
+    case url.query of
+        Just "meals=b" ->
+            MealPlanTonightBanner
+
+        Just "meals=c" ->
+            MealPlanSidePanel
+
+        _ ->
+            MealPlanWeekStrip
 
 
 subscriptions : Model -> Subscription FrontendOnly FrontendMsg
@@ -613,6 +632,9 @@ updateFromBackend msg model =
         StartMonofocusTimerFailed errorMsg ->
             ( { model | startMonofocusTimerError = Just errorMsg }, Command.none )
 
+        MealPlanUpdated mealPlan ->
+            ( { model | mealPlan = mealPlan }, Command.none )
+
 
 view : Model -> Effect.Browser.Document FrontendMsg
 view model =
@@ -648,14 +670,19 @@ view model =
     in
     { title = "Habit Dashboard"
     , body =
-        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css?dev=0b9df995" ] []
+        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css?dev=ee93e4e1" ] []
         , Html.div [ Attr.class "min-h-screen p-4 sm:p-8", backgroundStyle ]
-            [ Html.div [ Attr.class "max-w-4xl mx-auto" ]
-                (UI.TimerBanner.view model
-                    ++ [ UI.ProjectBanner.view model
-                       , UI.ConnectionCard.view model
-                       ]
-                )
+            [ Html.div [ Attr.class "max-w-7xl mx-auto flex flex-col lg:flex-row lg:justify-center lg:items-start lg:gap-6" ]
+                [ Html.div [ Attr.class "w-full max-w-4xl min-w-0" ]
+                    (UI.TimerBanner.view model
+                        ++ [ UI.ProjectBanner.view model
+                           , UI.MealPlan.banner model
+                           , UI.ConnectionCard.view model
+                           ]
+                    )
+                , UI.MealPlan.sidePanel model
+                ]
+            , UI.MealPlan.strip model
             , Html.div [ Attr.class "max-w-7xl mx-auto" ]
                 [ UI.CalendarView.view model
                 , UI.WebhookDebug.view model

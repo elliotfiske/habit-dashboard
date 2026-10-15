@@ -14,6 +14,7 @@ import Env
 import HabitCalendar
 import Json.Decode as Decode
 import Lamdera as L
+import MealPlan
 import Monofocus
 import SeqDict
 import Time
@@ -79,6 +80,7 @@ init =
       , runningEntry = Types.NoRunningEntry
       , webhookEvents = []
       , monofocusStatus = Types.MonofocusNotFetched
+      , mealPlan = MealPlan.empty
       }
       -- Get the current time first so we can tell the Hub our local timezone
       -- offset (see fetchMonofocusProject); the poll tick does the same.
@@ -174,10 +176,14 @@ update msg model =
                 monofocusStatusCmd =
                     Effect.Lamdera.sendToFrontend clientId (MonofocusStatusUpdated model.monofocusStatus)
 
+                mealPlanCmd : Command BackendOnly ToFrontend BackendMsg
+                mealPlanCmd =
+                    Effect.Lamdera.sendToFrontend clientId (MealPlanUpdated model.mealPlan)
+
                 -- Reverse to send oldest first
             in
             ( model
-            , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: monofocusStatusCmd :: webhookEventsCmds)
+            , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: monofocusStatusCmd :: mealPlanCmd :: webhookEventsCmds)
             )
 
         ClientDisconnected _ _ ->

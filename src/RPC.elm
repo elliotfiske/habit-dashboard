@@ -3,12 +3,14 @@ module RPC exposing (lamdera_handleEndpoints)
 {-| RPC endpoint handlers for external HTTP POST requests.
 
 This module handles webhooks from Toggl Track, which notify us
-when time entries are created, updated, or deleted.
+when time entries are created, updated, or deleted, plus the meal plan
+endpoints used by the meal-planning agent (see `docs/meal-plan-api.md`).
 
 -}
 
 import CalendarDict
 import Env
+import MealPlan exposing (MealPlan)
 import Monofocus
 import HabitCalendar exposing (HabitCalendarId(..))
 import Http
@@ -33,6 +35,15 @@ lamdera_handleEndpoints args model =
 
         "startMonofocusTimer" ->
             LamderaRPC.handleEndpointJson handleStartMonofocusTimer args model
+
+        "getMealPlan" ->
+            LamderaRPC.handleEndpointJson handleGetMealPlan args model
+
+        "setMeals" ->
+            LamderaRPC.handleEndpointJson handleSetMeals args model
+
+        "replaceMealPlan" ->
+            LamderaRPC.handleEndpointJson handleReplaceMealPlan args model
 
         _ ->
             ( ResultJson (E.object [ ( "error", E.string ("Unknown endpoint: " ++ args.endpoint) ) ])
@@ -402,4 +413,61 @@ handleStartMonofocusTimer _ model jsonArg =
         )
     , model
     , cmd
+    )
+
+
+{-| Return the whole stored meal plan.
+
+POST /\_r/getMealPlan
+Body: {}
+
+-}
+handleGetMealPlan : Lamdera.SessionId -> BackendModel -> E.Value -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
+handleGetMealPlan _ model _ =
+    ( Ok (MealPlan.encode model.mealPlan), model, Cmd.none )
+
+
+{-| Set or clear individual lunch/dinner slots, leaving the rest of the plan alone.
+
+POST /\_r/setMeals
+Body: { "meals": [ { "date": "2026-10-14", "slot": "dinner", "name": "Tacos", "note": "optional" } ] }
+
+A null or blank `name` clears the slot. Responds with the updated plan.
+
+-}
+handleSetMeals : Lamdera.SessionId -> BackendModel -> E.Value -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
+handleSetMeals _ model jsonArg =
+    case D.decodeValue MealPlan.mealUpdatesDecoder jsonArg of
+        Ok updates ->
+            saveMealPlan (MealPlan.applyUpdates updates model.mealPlan) model
+
+        Err err ->
+            ( Err (Http.BadBody (D.errorToString err)), model, Cmd.none )
+
+
+{-| Replace the entire stored meal plan.
+
+POST /\_r/replaceMealPlan
+Body: { "days": [ { "date": "2026-10-14", "lunch": { "name": "...", "note": null }, "dinner": null } ] }
+
+Same shape `getMealPlan` returns. Responds with the updated plan.
+
+-}
+handleReplaceMealPlan : Lamdera.SessionId -> BackendModel -> E.Value -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
+handleReplaceMealPlan _ model jsonArg =
+    case D.decodeValue MealPlan.planDecoder jsonArg of
+        Ok plan ->
+            saveMealPlan plan model
+
+        Err err ->
+            ( Err (Http.BadBody (D.errorToString err)), model, Cmd.none )
+
+
+{-| Store a new meal plan, push it to every open dashboard, and echo it back.
+-}
+saveMealPlan : MealPlan -> BackendModel -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
+saveMealPlan plan model =
+    ( Ok (MealPlan.encode plan)
+    , { model | mealPlan = plan }
+    , Lamdera.broadcast (MealPlanUpdated plan)
     )

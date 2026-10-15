@@ -6,6 +6,7 @@ module Types exposing
     , EditCalendarModal
     , FrontendModel
     , FrontendMsg(..)
+    , MealPlanVariant(..)
     , ModalState(..)
     , MonofocusProject
     , MonofocusStatus(..)
@@ -23,6 +24,7 @@ import Effect.Http
 import Effect.Lamdera
 import HabitCalendar exposing (HabitCalendarId)
 import Http
+import MealPlan exposing (MealPlan)
 import Time exposing (Posix, Zone)
 import Toggl exposing (TimeEntry, TimeEntryId, TogglProject, TogglProjectId, TogglWorkspace, TogglWorkspaceId)
 import Url exposing (Url)
@@ -42,7 +44,17 @@ type alias FrontendModel =
     , stopTimerError : Maybe String
     , monofocusStatus : MonofocusStatus
     , startMonofocusTimerError : Maybe String
+    , mealPlan : MealPlan
+    , mealPlanVariant : MealPlanVariant
     }
+
+
+{-| Which meal plan layout to show. Prototype switch, picked with `?meals=a|b|c`.
+-}
+type MealPlanVariant
+    = MealPlanWeekStrip
+    | MealPlanTonightBanner
+    | MealPlanSidePanel
 
 
 {-| A debug entry for tracking incoming webhook requests.
@@ -138,6 +150,7 @@ type alias BackendModel =
     , runningEntry : RunningEntry
     , webhookEvents : List WebhookDebugEntry -- Store all webhook events for debugging
     , monofocusStatus : MonofocusStatus
+    , mealPlan : MealPlan
     }
 
 
@@ -239,3 +252,4 @@ type ToFrontend
     | StopTimerFailed String RunningEntry
     | MonofocusStatusUpdated MonofocusStatus
     | StartMonofocusTimerFailed String
+    | MealPlanUpdated MealPlan
