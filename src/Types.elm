@@ -6,7 +6,6 @@ module Types exposing
     , EditCalendarModal
     , FrontendModel
     , FrontendMsg(..)
-    , MealPlanVariant(..)
     , ModalState(..)
     , MonofocusProject
     , MonofocusStatus(..)
@@ -45,16 +44,7 @@ type alias FrontendModel =
     , monofocusStatus : MonofocusStatus
     , startMonofocusTimerError : Maybe String
     , mealPlan : MealPlan
-    , mealPlanVariant : MealPlanVariant
     }
-
-
-{-| Which meal plan layout to show. Prototype switch, picked with `?meals=a|b|c`.
--}
-type MealPlanVariant
-    = MealPlanWeekStrip
-    | MealPlanTonightBanner
-    | MealPlanSidePanel
 
 
 {-| A debug entry for tracking incoming webhook requests.

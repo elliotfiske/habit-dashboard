@@ -5,7 +5,6 @@ module MealPlan exposing
     , MealUpdate
     , Slot(..)
     , applyUpdates
-    , daysFrom
     , empty
     , encode
     , forDate

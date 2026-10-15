@@ -1355,33 +1355,6 @@ html {
   outline: none;
 }
 
-.stack {
-  display: inline-grid;
-  place-items: center;
-  align-items: flex-end;
-}
-
-.stack > * {
-  grid-column-start: 1;
-  grid-row-start: 1;
-  transform: translateY(10%) scale(0.9);
-  z-index: 1;
-  width: 100%;
-  opacity: 0.6;
-}
-
-.stack > *:nth-child(2) {
-  transform: translateY(5%) scale(0.95);
-  z-index: 2;
-  opacity: 0.8;
-}
-
-.stack > *:nth-child(1) {
-  transform: translateY(0) scale(1);
-  z-index: 3;
-  opacity: 1;
-}
-
 .table {
   position: relative;
   width: 100%;
@@ -2496,10 +2469,6 @@ details.collapse summary::-webkit-details-marker {
   margin-bottom: 2rem;
 }
 
-.mr-1 {
-  margin-right: 0.25rem;
-}
-
 .mr-4 {
   margin-right: 1rem;
 }
@@ -2512,10 +2481,6 @@ details.collapse summary::-webkit-details-marker {
   margin-top: 0.5rem;
 }
 
-.mt-3 {
-  margin-top: 0.75rem;
-}
-
 .mt-4 {
   margin-top: 1rem;
 }
@@ -2526,6 +2491,13 @@ details.collapse summary::-webkit-details-marker {
 
 .mt-8 {
   margin-top: 2rem;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .flex {
@@ -2576,10 +2548,6 @@ details.collapse summary::-webkit-details-marker {
   max-width: 56rem;
 }
 
-.max-w-6xl {
-  max-width: 72rem;
-}
-
 .max-w-7xl {
   max-width: 80rem;
 }
@@ -2604,16 +2572,8 @@ details.collapse summary::-webkit-details-marker {
   grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 
-.grid-cols-7 {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-
 .grid-cols-\[3\.5rem_1fr_1fr\] {
   grid-template-columns: 3.5rem 1fr 1fr;
-}
-
-.grid-cols-\[auto_1fr_auto\] {
-  grid-template-columns: auto 1fr auto;
 }
 
 .flex-col {
@@ -2632,10 +2592,6 @@ details.collapse summary::-webkit-details-marker {
   align-items: center;
 }
 
-.items-baseline {
-  align-items: baseline;
-}
-
 .justify-start {
   justify-content: flex-start;
 }
@@ -2652,16 +2608,8 @@ details.collapse summary::-webkit-details-marker {
   justify-content: space-between;
 }
 
-.gap-0\.5 {
-  gap: 0.125rem;
-}
-
 .gap-1 {
   gap: 0.25rem;
-}
-
-.gap-1\.5 {
-  gap: 0.375rem;
 }
 
 .gap-2 {
@@ -2703,12 +2651,6 @@ details.collapse summary::-webkit-details-marker {
   overflow-y: auto;
 }
 
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .rounded {
   border-radius: 0.25rem;
 }
@@ -2717,25 +2659,13 @@ details.collapse summary::-webkit-details-marker {
   border-radius: 0.5rem;
 }
 
-.rounded-xl {
-  border-radius: 0.75rem;
-}
-
 .border {
   border-width: 1px;
-}
-
-.border-t {
-  border-top-width: 1px;
 }
 
 .border-base-300 {
   --tw-border-opacity: 1;
   border-color: var(--fallback-b3,oklch(var(--b3)/var(--tw-border-opacity, 1)));
-}
-
-.border-warning-content\/15 {
-  border-color: var(--fallback-wac,oklch(var(--wac)/0.15));
 }
 
 .bg-base-100 {
@@ -2776,21 +2706,12 @@ details.collapse summary::-webkit-details-marker {
   background-color: var(--fallback-su,oklch(var(--su)/var(--tw-bg-opacity, 1)));
 }
 
-.bg-warning {
-  --tw-bg-opacity: 1;
-  background-color: var(--fallback-wa,oklch(var(--wa)/var(--tw-bg-opacity, 1)));
-}
-
 .p-3 {
   padding: 0.75rem;
 }
 
 .p-4 {
   padding: 1rem;
-}
-
-.p-5 {
-  padding: 1.25rem;
 }
 
 .p-6 {
@@ -2811,25 +2732,12 @@ details.collapse summary::-webkit-details-marker {
   padding-bottom: 0.25rem;
 }
 
-.pt-3 {
-  padding-top: 0.75rem;
-}
-
 .text-center {
   text-align: center;
 }
 
-.text-right {
-  text-align: right;
-}
-
 .font-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-.text-2xl {
-  font-size: 1.5rem;
-  line-height: 2rem;
 }
 
 .text-3xl {
@@ -2881,16 +2789,8 @@ details.collapse summary::-webkit-details-marker {
   line-height: 1.375;
 }
 
-.leading-tight {
-  line-height: 1.25;
-}
-
 .tracking-wide {
   letter-spacing: 0.025em;
-}
-
-.tracking-wider {
-  letter-spacing: 0.05em;
 }
 
 .text-base-content {
@@ -2938,11 +2838,6 @@ details.collapse summary::-webkit-details-marker {
 .text-success-content {
   --tw-text-opacity: 1;
   color: var(--fallback-suc,oklch(var(--suc)/var(--tw-text-opacity, 1)));
-}
-
-.text-warning-content {
-  --tw-text-opacity: 1;
-  color: var(--fallback-wac,oklch(var(--wac)/var(--tw-text-opacity, 1)));
 }
 
 .text-white {

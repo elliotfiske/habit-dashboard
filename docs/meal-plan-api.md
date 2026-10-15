@@ -64,6 +64,7 @@ Returns the full updated plan.
 
 ## What the dashboard shows
 
-Today's meals and the days around it (exact layout is still being decided).
-Planning next week ahead of time is fine: write those dates now and they
+A Day / Lunch / Dinner table for the current Monday–Sunday week, with today
+highlighted and past days dimmed. Names wrap to two lines; notes are shown
+only for today. Planning next week ahead of time is fine: write those dates now and they
 appear when the week starts.
