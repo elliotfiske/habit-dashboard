@@ -142,6 +142,11 @@ The frontend follows The Elm Architecture (TEA) with clear module boundaries:
 - Webhook endpoint for real-time timer updates
 - Broadcasts updates to connected frontend clients
 
+**src/RPC.elm**
+- HTTP endpoints under `/_r/`: the Toggl webhook, starting the Monofocus timer,
+  and the meal plan (`getMealPlan`, `setMeals`, `replaceMealPlan`)
+- Meal plan API for agents: [docs/meal-plan-api.md](docs/meal-plan-api.md)
+
 ### Key Design Principles
 
 1. **Separation of Concerns**: UI components don't contain business logic; logic modules are pure functions
