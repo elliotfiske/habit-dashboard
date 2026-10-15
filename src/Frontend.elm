@@ -648,7 +648,7 @@ view model =
     in
     { title = "Habit Dashboard"
     , body =
-        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css" ] []
+        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css?dev=0b9df995" ] []
         , Html.div [ Attr.class "min-h-screen p-4 sm:p-8", backgroundStyle ]
             [ Html.div [ Attr.class "max-w-4xl mx-auto" ]
                 (UI.TimerBanner.view model
