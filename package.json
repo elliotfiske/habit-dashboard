@@ -2,6 +2,10 @@
   "name": "habit-dashboard",
   "version": "1.0.0",
   "description": "Lamdera habit tracking dashboard with TailwindCSS",
+  "private": true,
+  "config": {
+    "lamderaApp": "habit-dashboard"
+  },
   "scripts": {
     "start": "node scripts/run.js",
     "test": "elm-test-rs --compiler $(which lamdera)",
@@ -12,8 +16,15 @@
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
+    "@lydell/elm": "0.19.1-14",
     "@tailwindcss/typography": "^0.5.10",
     "daisyui": "^4.4.19",
+    "elm-review": "2.13.5",
+    "elm-test-rs": "3.0.2-0",
     "tailwindcss": "^3.4.0"
+  },
+  "allowScripts": {
+    "elm-test-rs@3.0.2-0": true,
+    "fsevents@2.3.3": true
   }
 }
