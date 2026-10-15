@@ -351,6 +351,17 @@ tests =
                 )
             ]
         )
+    , standardTest "Meal plan panel shows this week with today highlighted"
+        (\client1 ->
+            [ -- January 1, 2026 is a Thursday, so the week runs Dec 29 - Jan 4
+              client1.checkView 100
+                (Test.Html.Query.find [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "meal-plan-2026-01-01") ]
+                    >> Test.Html.Query.has [ Test.Html.Selector.text "Today", Test.Html.Selector.text "—" ]
+                )
+            , client1.checkView 100
+                (Test.Html.Query.has [ Test.Html.Selector.attribute (Html.Attributes.attribute "data-testid" "meal-plan-2025-12-29") ])
+            ]
+        )
     , standardTest "Create Calendar UI shows projects from selected workspace"
         (\actions ->
             [ -- First, send backend message with workspaces

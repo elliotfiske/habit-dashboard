@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "description": "Lamdera habit tracking dashboard with TailwindCSS",
   "scripts": {
+    "start": "node scripts/run.js",
+    "test": "elm-test-rs --compiler $(which lamdera)",
+    "review": "elm-review",
     "build:css": "npx tailwindcss -i ./src/input.css -o ./public/output.css",
-    "watch:css": "npx tailwindcss -i ./src/input.css -o ./public/output.css --watch"
+    "watch:css": "npx tailwindcss -i ./src/input.css -o ./public/output.css --watch=always",
+    "deploy": "bash scripts/deploy.sh",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.10",
@@ -12,4 +17,3 @@
     "tailwindcss": "^3.4.0"
   }
 }
-

@@ -18,11 +18,13 @@ import HabitCalendar exposing (HabitCalendarId(..))
 import Html
 import Html.Attributes as Attr
 import Lamdera as L
+import MealPlan
 import Time
 import Toggl
 import Types exposing (FrontendModel, FrontendMsg(..), ModalState(..), RunningEntry(..), ToBackend(..), ToFrontend(..), TogglConnectionStatus(..))
 import UI.CalendarView
 import UI.ConnectionCard
+import UI.MealPlan
 import UI.Modal
 import UI.ProjectBanner
 import UI.TimerBanner
@@ -61,6 +63,7 @@ init _ key =
       , stopTimerError = Nothing
       , monofocusStatus = Types.MonofocusNotFetched
       , startMonofocusTimerError = Nothing
+      , mealPlan = MealPlan.empty
       }
     , Command.batch
         [ Effect.Task.perform GotTime Effect.Time.now
@@ -613,6 +616,9 @@ updateFromBackend msg model =
         StartMonofocusTimerFailed errorMsg ->
             ( { model | startMonofocusTimerError = Just errorMsg }, Command.none )
 
+        MealPlanUpdated mealPlan ->
+            ( { model | mealPlan = mealPlan }, Command.none )
+
 
 view : Model -> Effect.Browser.Document FrontendMsg
 view model =
@@ -648,14 +654,17 @@ view model =
     in
     { title = "Habit Dashboard"
     , body =
-        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css" ] []
+        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css?dev=5917d781" ] []
         , Html.div [ Attr.class "min-h-screen p-4 sm:p-8", backgroundStyle ]
-            [ Html.div [ Attr.class "max-w-4xl mx-auto" ]
-                (UI.TimerBanner.view model
-                    ++ [ UI.ProjectBanner.view model
-                       , UI.ConnectionCard.view model
-                       ]
-                )
+            [ Html.div [ Attr.class "max-w-7xl mx-auto flex flex-col lg:flex-row lg:justify-center lg:items-start lg:gap-6" ]
+                [ Html.div [ Attr.class "w-full max-w-4xl min-w-0" ]
+                    (UI.TimerBanner.view model
+                        ++ [ UI.ProjectBanner.view model
+                           , UI.ConnectionCard.view model
+                           ]
+                    )
+                , UI.MealPlan.view model
+                ]
             , Html.div [ Attr.class "max-w-7xl mx-auto" ]
                 [ UI.CalendarView.view model
                 , UI.WebhookDebug.view model

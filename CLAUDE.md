@@ -140,9 +140,53 @@ view model =
 - ❌ Skipping tests after "small" changes
 - ❌ Forgetting to add type annotations to extracted functions
 
-## Development Server
-- The Lamdera dev server runs on `http://localhost:8000`
-- Start the server with `lamdera live`
+## Development Server (`npm start`)
+
+`npm start` runs [scripts/run.js](scripts/run.js), which babysits the local dev
+stack: it picks a free port (8000, 8002, … — lamdera also reserves port+1), does
+a one-shot `build:css`, starts the Tailwind and cachebust watchers, pre-warms
+`elm-stuff`, and launches `lamdera live` (auto-restarting it on a crash or a
+known bad-state pattern). Force a port with `LAMDERA_PORT=8004 npm start`.
+
+For screenshots and frontend debugging use the Claude in Chrome tools against
+that port. Each worktree should run its own `lamdera live` on its own port.
+
+## Inspecting the BackendModel (`lamdera backend`)
+
+For reading **backend state**, use `lamdera backend` — it evaluates an Elm
+expression against the live `lamdera live` BackendModel and prints the result.
+It's read-only, needs no browser, and falls back to the last saved
+BackendModel if `lamdera live` isn't running.
+
+```bash
+lamdera backend --no-colors --eval='model.mealPlan'          # focused query
+lamdera backend --no-colors --import='import Set' --eval='…' # extra imports
+lamdera backend --port 8002 --no-colors --eval='…'           # other worktree
+```
+
+- `model : Types.BackendModel` is in scope; `Dict` is imported by default.
+- Prefer a focused `--eval`; the full model (calendars, webhook log) is large.
+- The expression compiles against the *current directory's* code but reads the
+  model from the server on `--port` (default 8000). With several worktrees,
+  pass the matching `--port`.
+- To *write* backend state, go through the app: drive the UI, or POST to an
+  RPC endpoint (`curl -X POST localhost:8000/_r/<endpoint> -d '{…}'`).
+
+## Git hooks, Tailwind and deploys
+
+- `npm install` sets `core.hooksPath` to `.githooks`.
+- `public/output.css` is committed (Lamdera serves `public/` from git). The
+  pre-commit hook rebuilds it when `.elm`/CSS inputs are staged and restamps
+  the `/output.css?dev=<hash>` cache-buster in `src/Frontend.elm`
+  ([scripts/cachebust.js](scripts/cachebust.js)).
+- The pre-commit hook also blocks committing `src/Env.elm` unless it matches
+  `Env-Clean.elm` (keeps the Toggl key out of git).
+- The pre-push hook runs `lamdera check` when Elm source changed, so a missing
+  Evergreen migration is caught at PR time. Bypass with `git push --no-verify`.
+- `npm run deploy` ([scripts/deploy.sh](scripts/deploy.sh)) deploys `main`
+  from the primary checkout. See the `lamdera-deploy` skill.
+- `elm-review` runs after every `.elm` edit via a `PostToolUse` hook in
+  [.claude/settings.json](.claude/settings.json).
 
 ## Documentation
 - Lamdera REPL docs: https://dashboard.lamdera.app/docs/repl
@@ -150,7 +194,7 @@ view model =
 
 ## Linting and Testing
 - After making code changes to `*.elm` files, run `elm-review` to check for linting errors
-- Also run `elm-test` to ensure all tests still pass
+- Also run `npm test` to ensure all tests still pass (plain `elm-test` doesn't work here; it needs the lamdera compiler)
 - Fix any elm-review errors and test failures before considering the task complete
 - Common elm-review rules in this project:
   - `NoExposingEverything` - Use explicit exports instead of `exposing (..)`
@@ -160,7 +204,7 @@ view model =
 
 ## Testing with lamdera/program-test
 
-- Run tests: `elm-test`
+- Run tests: `npm test` (`elm-test-rs --compiler $(which lamdera)`)
 - Tests location: `tests/E2ETests.elm`
 - Visual debugger: `http://localhost:8000/tests/E2ETests.elm` (use arrow keys to step through)
 
