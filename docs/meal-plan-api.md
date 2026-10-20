@@ -113,14 +113,15 @@ Missing slots count as empty, and `note` can be left out.
 
 ## What the dashboard shows
 
-A Day / Lunch / Dinner table for the current **Monday–Sunday** week, with
-today highlighted and past days dimmed. Days with nothing planned show "—".
-Next week's meals can be written ahead of time; they appear on Monday.
+A Day / Lunch / Dinner table of seven rolling days: two days back, **today
+(always the third row)**, and the next four days. Today is highlighted and past
+days are dimmed. Days with nothing planned show "—". Meals can be written
+ahead of time; they appear once they fall within four days of today.
 
 ## Suggested workflow for an agent
 
 1. `getMealPlan` to see what's already planned.
-2. Plan the week (Monday–Sunday), reusing leftovers for the next day's lunch
+2. Plan the coming days (at least four ahead of today), reusing leftovers for the next day's lunch
    where it makes sense.
 3. Write it with **`setMeals`**, one entry per slot. Prefer it over
    `replaceMealPlan`, which wipes anything you didn't include.
