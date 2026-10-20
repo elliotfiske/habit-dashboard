@@ -70,10 +70,10 @@ suite =
                         |> Result.map Dict.isEmpty
                         |> Expect.equal (Ok True)
             ]
-        , test "weekOf runs Monday to Sunday" <|
+        , test "window puts today third from the top, even on a Sunday" <|
             \_ ->
-                MealPlan.weekOf (Date.fromCalendarDate 2026 Time.Oct 14)
+                MealPlan.window (Date.fromCalendarDate 2026 Time.Oct 18)
                     |> List.map Date.toIsoString
                     |> Expect.equal
-                        [ "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18" ]
+                        [ "2026-10-16", "2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22" ]
         ]

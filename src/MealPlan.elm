@@ -10,7 +10,7 @@ module MealPlan exposing
     , forDate
     , mealUpdatesDecoder
     , planDecoder
-    , weekOf
+    , window
     )
 
 {-| The household meal plan: a lunch and a dinner slot per calendar day.
@@ -119,11 +119,12 @@ applyUpdate update plan =
         Dict.insert key newDay plan
 
 
-{-| The Monday-to-Sunday week containing `today`.
+{-| Seven days with `today` third from the top: two days back, today, then
+four days ahead. Rolling, so tomorrow is always visible, even on Sunday.
 -}
-weekOf : Date -> List Date
-weekOf today =
-    daysFrom (Date.floor Date.Monday today) 7
+window : Date -> List Date
+window today =
+    daysFrom (Date.add Date.Days -2 today) 7
 
 
 {-| `count` consecutive days starting at `start`.

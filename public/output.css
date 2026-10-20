@@ -2415,6 +2415,10 @@ details.collapse summary::-webkit-details-marker {
   margin-top: 0px;
 }
 
+.visible {
+  visibility: visible;
+}
+
 .collapse {
   visibility: collapse;
 }

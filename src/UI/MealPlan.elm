@@ -1,7 +1,8 @@
 module UI.MealPlan exposing (view)
 
-{-| This week's lunches and dinners: a Day / Lunch / Dinner table that sits
-beside the banners, with today highlighted and past days dimmed.
+{-| A rolling window of lunches and dinners (today is the third row): a
+Day / Lunch / Dinner table that sits beside the banners, with today
+highlighted and past days dimmed.
 -}
 
 import Date exposing (Date)
@@ -32,7 +33,7 @@ view model =
                     , sectionLabel "Dinner"
                     ]
                 , Html.div [ Attr.class "flex flex-col" ]
-                    (List.map (viewDay today model) (MealPlan.weekOf today))
+                    (List.map (viewDay today model) (MealPlan.window today))
                 ]
 
         _ ->
