@@ -28,8 +28,10 @@ import UI.MealPlan
 import UI.Modal
 import UI.ProjectBanner
 import UI.TimerBanner
+import UI.WaterFlower
 import UI.WebhookDebug
 import Url
+import Water
 
 
 type alias Model =
@@ -64,6 +66,7 @@ init _ key =
       , monofocusStatus = Types.MonofocusNotFetched
       , startMonofocusTimerError = Nothing
       , mealPlan = MealPlan.empty
+      , water = Water.empty
       }
     , Command.batch
         [ Effect.Task.perform GotTime Effect.Time.now
@@ -619,6 +622,9 @@ updateFromBackend msg model =
         MealPlanUpdated mealPlan ->
             ( { model | mealPlan = mealPlan }, Command.none )
 
+        WaterUpdated water ->
+            ( { model | water = water }, Command.none )
+
 
 view : Model -> Effect.Browser.Document FrontendMsg
 view model =
@@ -654,7 +660,7 @@ view model =
     in
     { title = "Habit Dashboard"
     , body =
-        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css?dev=0fbdfc9e" ] []
+        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css?dev=de6ad673" ] []
         , Html.div [ Attr.class "min-h-screen p-4 sm:p-8", backgroundStyle ]
             [ Html.div [ Attr.class "max-w-7xl mx-auto flex flex-col lg:flex-row lg:justify-center lg:items-start lg:gap-6" ]
                 [ Html.div [ Attr.class "w-full max-w-4xl min-w-0" ]
@@ -663,7 +669,10 @@ view model =
                            , UI.ConnectionCard.view model
                            ]
                     )
-                , UI.MealPlan.view model
+                , Html.div [ Attr.class "w-full lg:w-[26rem] shrink-0" ]
+                    [ UI.MealPlan.view model
+                    , UI.WaterFlower.view model
+                    ]
                 ]
             , Html.div [ Attr.class "max-w-7xl mx-auto" ]
                 [ UI.CalendarView.view model

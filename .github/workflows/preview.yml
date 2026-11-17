@@ -1,0 +1,74 @@
+name: Preview
+
+# Every PR push → a Lamdera preview app at <app>-pr-<N>.lamdera.app, linked
+# from one sticky PR comment. Ported from king-of-the-hole, minus its
+# screenshot jobs.
+#
+# Preview apps have their own backend (it doesn't keep state across deploys)
+# and skip Evergreen, so this is safe to run on every push and never touches
+# the living-room dashboard. The `pr-<N>` branch name keeps the subdomain
+# valid (feature branches contain slashes).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write # sticky comment
+
+jobs:
+  deploy:
+    # Forks don't get secrets.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.push.outputs.url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Lamdera setup
+        uses: ./.github/actions/lamdera-setup
+        with:
+          ssh-key: ${{ secrets.LAMDERA_SSH_KEY }}
+
+      - name: Push preview
+        id: push
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          HAS_KEY: ${{ secrets.LAMDERA_SSH_KEY != '' }}
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::error::LAMDERA_SSH_KEY secret not set; can't push the preview"
+            exit 1
+          fi
+          git push --force --no-verify lamdera "HEAD:refs/heads/pr-${PR}"
+          url="https://${LAMDERA_APP}-pr-${PR}.lamdera.app"
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+          echo "### Preview: ${url}" >> "$GITHUB_STEP_SUMMARY"
+
+  comment:
+    needs: [deploy]
+    if: always() && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Upsert PR comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          PREVIEW_URL: ${{ needs.deploy.outputs.url }}
+        with:
+          script: await require('./.github/scripts/preview-comment.js')({ github, context })

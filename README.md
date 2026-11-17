@@ -144,8 +144,10 @@ The frontend follows The Elm Architecture (TEA) with clear module boundaries:
 
 **src/RPC.elm**
 - HTTP endpoints under `/_r/`: the Toggl webhook, starting the Monofocus timer,
-  and the meal plan (`getMealPlan`, `setMeals`, `replaceMealPlan`)
+  the meal plan (`getMealPlan`, `setMeals`, `replaceMealPlan`), and water
 - Meal plan API for agents: [docs/meal-plan-api.md](docs/meal-plan-api.md)
+- Water from Apple Health, sent by the Med Log iPhone app (`setWaterDrinks`,
+  `getWater`): [docs/water-api.md](docs/water-api.md)
 
 ### Key Design Principles
 

@@ -193,6 +193,9 @@ lamdera backend --port 8002 --no-colors --eval='…'           # other worktree
 - **Tests** (`.github/workflows/tests.yml`): elm-review + `npm test` on every
   PR and push to main. On PRs, an `Evergreen` job also checks migration
   numbers against production and runs `lamdera check`.
+- **Preview** (`.github/workflows/preview.yml`): every PR push deploys to
+  `habit-dashboard-pr-<N>.lamdera.app` (its own backend, reset on each deploy)
+  and links it in a sticky PR comment. Test there before merging.
 - **Deploy** (`.github/workflows/deploy.yml`): every merge to `main` runs
   `npm run deploy` ([scripts/deploy.sh](scripts/deploy.sh)) on CI, moves the
   `deployed` branch to what shipped, then re-runs Tests on open PRs (each

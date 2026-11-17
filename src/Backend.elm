@@ -20,6 +20,7 @@ import SeqDict
 import Time
 import Toggl
 import Types exposing (BackendModel, BackendMsg(..), ToBackend(..), ToFrontend(..))
+import Water
 
 
 type alias Model =
@@ -81,6 +82,7 @@ init =
       , webhookEvents = []
       , monofocusStatus = Types.MonofocusNotFetched
       , mealPlan = MealPlan.empty
+      , water = Water.empty
       }
       -- Get the current time first so we can tell the Hub our local timezone
       -- offset (see fetchMonofocusProject); the poll tick does the same.
@@ -180,10 +182,14 @@ update msg model =
                 mealPlanCmd =
                     Effect.Lamdera.sendToFrontend clientId (MealPlanUpdated model.mealPlan)
 
+                waterCmd : Command BackendOnly ToFrontend BackendMsg
+                waterCmd =
+                    Effect.Lamdera.sendToFrontend clientId (WaterUpdated model.water)
+
                 -- Reverse to send oldest first
             in
             ( model
-            , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: monofocusStatusCmd :: mealPlanCmd :: webhookEventsCmds)
+            , Command.batch (calendarsCmd :: workspacesCmd :: projectsCmd :: runningEntryCmd :: monofocusStatusCmd :: mealPlanCmd :: waterCmd :: webhookEventsCmds)
             )
 
         ClientDisconnected _ _ ->

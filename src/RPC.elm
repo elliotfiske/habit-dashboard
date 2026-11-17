@@ -4,24 +4,26 @@ module RPC exposing (lamdera_handleEndpoints)
 
 This module handles webhooks from Toggl Track, which notify us
 when time entries are created, updated, or deleted, plus the meal plan
-endpoints used by the meal-planning agent (see `docs/meal-plan-api.md`).
+endpoints used by the meal-planning agent (see `docs/meal-plan-api.md`) and the
+water endpoints used by the Med Log iPhone app (see `docs/water-api.md`).
 
 -}
 
 import CalendarDict
 import Env
-import MealPlan exposing (MealPlan)
-import Monofocus
 import HabitCalendar exposing (HabitCalendarId(..))
 import Http
 import Json.Decode as D
 import Json.Encode as E
 import Lamdera
 import LamderaRPC exposing (RPCArgs, RPCResult(..))
+import MealPlan exposing (MealPlan)
+import Monofocus
 import Task
 import Time
 import Toggl
 import Types exposing (BackendModel, BackendMsg(..), ToFrontend(..), WebhookDebugEntry)
+import Water
 
 
 {-| Main entry point for all RPC endpoints.
@@ -44,6 +46,12 @@ lamdera_handleEndpoints args model =
 
         "replaceMealPlan" ->
             LamderaRPC.handleEndpointJson handleReplaceMealPlan args model
+
+        "getWater" ->
+            LamderaRPC.handleEndpointJson handleGetWater args model
+
+        "setWaterDrinks" ->
+            LamderaRPC.handleEndpointJson handleSetWaterDrinks args model
 
         _ ->
             ( ResultJson (E.object [ ( "error", E.string ("Unknown endpoint: " ++ args.endpoint) ) ])
@@ -358,7 +366,7 @@ calculateNewRunningEntry event previousRunningEntry =
 
 {-| Handle incoming request to start a Monofocus timer.
 
-POST /_r/startMonofocusTimer
+POST /\_r/startMonofocusTimer
 Body (optional): { "description": "Custom description" }
 
 If no description is provided, uses the current Monofocus Hub project title.
@@ -471,3 +479,39 @@ saveMealPlan plan model =
     , { model | mealPlan = plan }
     , Lamdera.broadcast (MealPlanUpdated plan)
     )
+
+
+{-| Return the stored water log.
+
+POST /\_r/getWater
+Body: {}
+
+-}
+handleGetWater : Lamdera.SessionId -> BackendModel -> E.Value -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
+handleGetWater _ model _ =
+    ( Ok (Water.encode model.water), model, Cmd.none )
+
+
+{-| Replace every drink from `since` on with the ones sent, push the log to
+every open dashboard, and echo it back.
+
+POST /\_r/setWaterDrinks
+Body: { "since": "2026-11-15T08:00:00Z", "sentAt": "2026-11-16T21:40:00Z", "drinks": [ { "id": "…", "at": "2026-11-16T17:02:11Z", "ml": 236.6 } ] }
+
+-}
+handleSetWaterDrinks : Lamdera.SessionId -> BackendModel -> E.Value -> ( Result Http.Error E.Value, BackendModel, Cmd BackendMsg )
+handleSetWaterDrinks _ model jsonArg =
+    case D.decodeValue Water.uploadDecoder jsonArg of
+        Ok upload ->
+            let
+                water : Water.Log
+                water =
+                    Water.applyUpload upload model.water
+            in
+            ( Ok (Water.encode water)
+            , { model | water = water }
+            , Lamdera.broadcast (WaterUpdated water)
+            )
+
+        Err err ->
+            ( Err (Http.BadBody (D.errorToString err)), model, Cmd.none )

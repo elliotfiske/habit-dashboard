@@ -2,3 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+
+/* Water flower (src/UI/Flower.elm). Mood changes animate through these transitions. */
+.flower-part {
+  transition: transform 2s ease-in-out, fill 2s ease-in-out, stroke 2s ease-in-out, opacity 2s ease-in-out;
+}
+
+.flower-sway {
+  transform-origin: 100px 178px;
+  animation: flower-sway 5s ease-in-out infinite;
+}
+
+@keyframes flower-sway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+
+.flower-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: flower-twinkle 1.8s ease-in-out infinite;
+}
+
+@keyframes flower-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1); }
+}
