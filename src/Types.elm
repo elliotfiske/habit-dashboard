@@ -27,6 +27,7 @@ import MealPlan exposing (MealPlan)
 import Time exposing (Posix, Zone)
 import Toggl exposing (TimeEntry, TimeEntryId, TogglProject, TogglProjectId, TogglWorkspace, TogglWorkspaceId)
 import Url exposing (Url)
+import Water
 
 
 type alias FrontendModel =
@@ -44,6 +45,7 @@ type alias FrontendModel =
     , monofocusStatus : MonofocusStatus
     , startMonofocusTimerError : Maybe String
     , mealPlan : MealPlan
+    , water : Water.Log
     }
 
 
@@ -141,6 +143,7 @@ type alias BackendModel =
     , webhookEvents : List WebhookDebugEntry -- Store all webhook events for debugging
     , monofocusStatus : MonofocusStatus
     , mealPlan : MealPlan
+    , water : Water.Log
     }
 
 
@@ -243,3 +246,4 @@ type ToFrontend
     | MonofocusStatusUpdated MonofocusStatus
     | StartMonofocusTimerFailed String
     | MealPlanUpdated MealPlan
+    | WaterUpdated Water.Log
