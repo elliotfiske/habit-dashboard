@@ -12,6 +12,7 @@ import Html exposing (Html)
 import Html.Attributes as Attr
 import Svg exposing (Svg)
 import Svg.Attributes as SvgAttr
+import UI.Flower.SecondHead as SecondHead
 
 
 type Mood
@@ -46,10 +47,11 @@ view mood =
             [ stemSegment "M100 178 L100 128" wilting
             , leaf "M0 0 C -12 -14, -34 -12, -40 -4 C -30 4, -12 6, 0 0 Z" ( 100, 160 ) (pick mood 20 12 -40) wilting
             , leaf "M0 0 C 12 -14, 34 -12, 40 -4 C 30 4, 12 6, 0 0 Z" ( 100, 146 ) (pick mood -20 -12 40) wilting
+            , SecondHead.view (mood == Thriving)
             , Svg.g
                 [ SvgAttr.class "flower-part"
                 , Attr.style "transform-origin" "100px 128px"
-                , Attr.style "transform" ("rotate(" ++ String.fromFloat (pick mood 0 0 80) ++ "deg)")
+                , Attr.style "transform" ("rotate(" ++ String.fromFloat (pick mood -8 0 80) ++ "deg)")
                 ]
                 [ stemSegment "M100 128 C 98 112, 102 96, 100 80" wilting
                 , head mood
@@ -149,7 +151,7 @@ head mood =
             , Attr.style "fill" (color wilting "#facc15" "#c9b26b")
             ]
             []
-        , face wilting
+        , face mood
         ]
 
 
@@ -166,23 +168,38 @@ petalColor mood =
             "#bfa2aa"
 
 
-face : Bool -> Svg msg
-face wilting =
+{-| Once the second head sprouts, the eyes glance nervously over at it and
+the smile goes wobbly.
+-}
+face : Mood -> Svg msg
+face mood =
     let
+        wilting : Bool
+        wilting =
+            mood == Wilting
+
         eye : String -> Svg msg
         eye cx =
             Svg.circle [ SvgAttr.cx cx, SvgAttr.cy "-3", SvgAttr.r "1.8", SvgAttr.fill "#3f2d1d" ] []
     in
     Svg.g []
-        [ eye "-5"
-        , eye "5"
+        [ Svg.g
+            [ SvgAttr.class "flower-part"
+            , Attr.style "transform" (translate (pick mood 3 0 0) (pick mood 0.8 0 0))
+            ]
+            [ eye "-5", eye "5" ]
         , Svg.path
             [ SvgAttr.d
-                (if wilting then
-                    "M-5 8 Q0 3 5 8"
+                (case mood of
+                    Thriving ->
+                        -- a nervous wobbly line: what is that thing
+                        "M-6 6 Q-3 3 0 6 Q3 9 6 6"
 
-                 else
-                    "M-6 3 Q0 10 6 3"
+                    Happy ->
+                        "M-6 3 Q0 10 6 3"
+
+                    Wilting ->
+                        "M-5 8 Q0 3 5 8"
                 )
             , SvgAttr.fill "none"
             , SvgAttr.stroke "#3f2d1d"
@@ -243,7 +260,7 @@ sparkles : Bool -> Svg msg
 sparkles visible =
     if visible then
         Svg.g [ SvgAttr.fill "#fde047" ]
-            (List.map sparkle [ ( 40, 50, "0s" ), ( 158, 36, "0.6s" ), ( 166, 104, "1.2s" ), ( 30, 120, "0.9s" ) ])
+            (List.map sparkle [ ( 40, 50, "0s" ), ( 158, 36, "0.6s" ), ( 184, 160, "1.2s" ), ( 30, 120, "0.9s" ) ])
 
     else
         Svg.g [] []

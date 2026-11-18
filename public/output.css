@@ -3140,6 +3140,62 @@ details.collapse summary::-webkit-details-marker {
   }
 }
 
+/* The second head (src/UI/Flower/SecondHead.elm): springs out with an overshoot. */
+
+.flower-sprout {
+  transform-origin: 100px 136px;
+  transition: transform 1.4s cubic-bezier(0.34, 1.9, 0.5, 1), opacity 0.4s ease-out;
+}
+
+.flower-bobble {
+  transform-origin: 0px 26px;
+  animation: flower-bobble 2.3s ease-in-out infinite;
+}
+
+@keyframes flower-bobble {
+  0%, 100% {
+    transform: rotate(-14deg);
+  }
+
+  30% {
+    transform: rotate(9deg) scale(1.06, 0.94);
+  }
+
+  55% {
+    transform: rotate(-4deg);
+  }
+
+  75% {
+    transform: rotate(12deg) scale(0.95, 1.05);
+  }
+}
+
+.flower-googly {
+  animation: flower-googly 1s steps(1) infinite;
+}
+
+@keyframes flower-googly {
+  0%, 100% {
+    transform: translate(0, calc(var(--googly) * 0.9));
+  }
+
+  20% {
+    transform: translate(calc(var(--googly) * 0.8), calc(var(--googly) * 0.4));
+  }
+
+  40% {
+    transform: translate(calc(var(--googly) * -0.7), calc(var(--googly) * 0.6));
+  }
+
+  60% {
+    transform: translate(calc(var(--googly) * 0.3), calc(var(--googly) * -0.8));
+  }
+
+  80% {
+    transform: translate(calc(var(--googly) * -0.9), 0);
+  }
+}
+
 @media (min-width: 640px) {
   .sm\:grid-cols-\[1fr_auto\] {
     grid-template-columns: 1fr auto;
