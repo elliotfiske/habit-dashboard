@@ -660,7 +660,7 @@ view model =
     in
     { title = "Habit Dashboard"
     , body =
-        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css?dev=de6ad673" ] []
+        [ Html.node "link" [ Attr.rel "stylesheet", Attr.href "/output.css?dev=8fc75141" ] []
         , Html.div [ Attr.class "min-h-screen p-4 sm:p-8", backgroundStyle ]
             [ Html.div [ Attr.class "max-w-7xl mx-auto flex flex-col lg:flex-row lg:justify-center lg:items-start lg:gap-6" ]
                 [ Html.div [ Attr.class "w-full max-w-4xl min-w-0" ]
